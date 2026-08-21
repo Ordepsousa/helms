@@ -5,7 +5,7 @@ type: application
 version: 0.1.0
 appVersion: "0.77.0"
 dependencies:
-  - name: postgresql
-    version: "16.4.6"
-    repository: "https://charts.bitnami.com/bitnami"
-    condition: postgresql.enabled
+    -   name: postgresql
+        version: "16.4.6"
+        repository: oci://registry-1.docker.io/bitnamicharts
+        condition: postgresql.enabled
