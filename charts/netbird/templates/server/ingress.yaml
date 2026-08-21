@@ -1,0 +1,55 @@
+{{- if and .Values.ingress.enabled (not .Values.gateway.enabled) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: {{ include "netbird.serverServiceName" . }}
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    {{- with .Values.ingress.annotations }}
+    annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+spec:
+    {{- with .Values.ingress.className }}
+    ingressClassName: {{ . | quote }}
+    {{- end }}
+    {{- with .Values.ingress.tls }}
+    tls:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    rules:
+        {{- range .Values.ingress.hosts }}
+        - host: {{ . | quote }}
+          http:
+            paths:
+                - path: /api
+                  pathType: Prefix
+                  backend:
+                    service:
+                        name: {{ include "netbird.serverServiceName" $ }}
+                        port:
+                            name: http
+                - path: /oauth2
+                  pathType: Prefix
+                  backend:
+                    service:
+                        name: {{ include "netbird.serverServiceName" $ }}
+                        port:
+                            name: http
+                - path: /ws-proxy
+                  pathType: Prefix
+                  backend:
+                    service:
+                        name: {{ include "netbird.serverServiceName" $ }}
+                        port:
+                            name: http
+                - path: /relay
+                  pathType: Prefix
+                  backend:
+                    service:
+                        name: {{ include "netbird.serverServiceName" $ }}
+                        port:
+                            name: http
+        {{- end }}
+{{- end }}

@@ -1,0 +1,383 @@
+# -- Override the chart name used in resource labels.
+nameOverride: ""
+# -- Override the fully qualified resource name.
+fullnameOverride: ""
+# -- Additional labels applied to chart resources and workload Pods.
+commonLabels: { }
+
+# -- Public DNS name used by NetBird, OAuth redirects and Gateway routes.
+domain: ""
+# -- CIDRs of reverse proxies whose forwarded headers NetBird may trust.
+trustedHTTPProxies: [ ]
+# - "0.0.0.0/0"
+
+# -- HTTP Ingress exposure. Disabled when Gateway API is enabled.
+ingress:
+    # -- Create dashboard and server Ingress resources.
+    enabled: false
+    # -- IngressClass name, for example nginx.
+    className: ""
+    # -- Controller-specific annotations.
+    annotations: { }
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # -- Hosts shared by the dashboard and server Ingress resources.
+    hosts:
+        - chart-example.local
+    # -- TLS secrets and hostnames used by both Ingress resources.
+    tls: [ ]
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+# -- Gateway API exposure for HTTP, gRPC and UDP.
+gateway:
+    # -- Create HTTPRoute, GRPCRoute and UDPRoute resources.
+    enabled: false
+    # -- Gateway resources to which the routes attach.
+    parentRefs: [ ]
+    # -- Controller-specific route annotations.
+    annotations: { }
+
+# -- ServiceAccount shared by the server and dashboard Pods.
+serviceAccount:
+    # -- Create the ServiceAccount.
+    create: true
+    # -- Mount the Kubernetes API token into both workloads.
+    automount: false
+    # -- ServiceAccount annotations.
+    annotations: { }
+    # -- Existing ServiceAccount name. Empty uses the release fullname.
+    name: ""
+
+# -- NetBird management server settings.
+server:
+    # -- Requested server replicas. SQLite is always forced to one replica.
+    replicaCount: 1
+
+    # -- Deployment update strategy. SQLite is always forced to Recreate.
+    strategy:
+        type: Recreate
+
+    # -- Server container image settings.
+    image:
+        # -- Image repository.
+        repository: netbirdio/netbird-server
+        # -- Kubernetes image pull policy.
+        pullPolicy: IfNotPresent
+        # -- Image tag. Empty uses Chart.appVersion.
+        tag: ""
+        # -- Optional immutable image digest, for example sha256:... .
+        digest: ""
+
+    # -- Additional arguments passed to the server container.
+    extraArgs: [ ]
+
+    # -- Additional server Pod annotations.
+    podAnnotations: { }
+    # -- Additional server Pod labels.
+    podLabels: { }
+    # -- Server Pod-level security context.
+    podSecurityContext:
+        seccompProfile:
+            type: RuntimeDefault
+
+    # -- Server container security context. Review networking capabilities before production use.
+    securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        runAsNonRoot: false
+        capabilities:
+            drop: [ ALL ]
+            add: [ NET_ADMIN, NET_RAW, PERFMON, BPF ]
+
+    # -- Server HTTP and STUN Service settings.
+    services:
+        http:
+            # -- HTTP Service type.
+            type: ClusterIP
+            # -- HTTP Service port.
+            port: 80
+        stun:
+            # -- STUN Service type. Use LoadBalancer for UDP exposure with Ingress.
+            type: ClusterIP
+            # -- STUN UDP port.
+            port: 3478
+
+    # -- Server CPU and memory requests/limits.
+    resources:
+        requests:
+            cpu: 100m
+            memory: 256Mi
+        limits:
+            cpu: 500m
+            memory: 512Mi
+
+    # -- Server data volume settings.
+    persistence:
+        # -- Create/use persistent storage. False uses emptyDir.
+        enabled: true
+        # -- StorageClass name. Empty uses the cluster default.
+        storageClass: ""
+        # -- Existing PVC name. Empty creates <fullname>-data.
+        existingClaim: ''
+        # -- PVC access modes.
+        accessModes:
+            - ReadWriteOnce
+        # -- PVC requested capacity.
+        size: 4Gi
+        # -- PVC volume mode.
+        volumeMode: ""
+        # -- PVC annotations.
+        annotations: { }
+
+        # -- Mount path for NetBird server data.
+        mountPath: /var/lib/netbird
+
+    # -- Database selection and external database connection settings.
+    database:
+        # -- Store mode: auto, sqlite, postgresql or external.
+        # Auto selects external configuration, then bundled PostgreSQL, then SQLite.
+        mode: auto
+        external:
+            # -- External engine: postgres or mysql.
+            engine: postgres
+            # -- External database hostname. Empty allows DSN or bundled PostgreSQL resolution.
+            host: ""
+            # -- External database port. Use 3306 for MySQL.
+            port: 5432
+            # -- External database name.
+            name: netbird
+            # -- External database username.
+            username: netbird
+            # -- External database password. Ignored when existingSecret or dsn is set.
+            password: ""
+            # -- Existing Secret containing the external database password.
+            existingSecret: ""
+            # -- Key in existingSecret containing the password.
+            existingSecretPasswordKey: database-password
+            # -- PostgreSQL sslmode. Ignored for MySQL.
+            sslMode: prefer
+            # -- Raw database DSN. Takes precedence over host and credentials.
+            dsn: ""
+
+    # -- NetBird store encryption key. Required for generated SQLite configuration.
+    encryptionKey: '' # openssl rand -base64 32
+    # -- NetBird authentication secret. Required for generated configuration.
+    authSecret: '' # openssl rand -base64 32
+
+    # -- Additional environment variables.
+    env: [ ]
+    # -- Additional envFrom sources such as Secret or ConfigMap references.
+    envFrom: [ ]
+    # -- Server health probe switches.
+    probes:
+        # -- Enable NetBird server health probes.
+        enabled: true
+    # -- Server configuration Secret settings.
+    config:
+        # -- Existing Secret containing the complete server config.yaml.
+        existingSecret: ""
+        # -- Key in existingSecret containing the configuration.
+        existingSecretKey: config.yaml
+        # -- Additional YAML merged into generated configuration.
+        extraYaml: ""
+
+    # -- Additional server volumes.
+    extraVolumes: [ ]
+    # -- Additional server volume mounts.
+    extraVolumeMounts: [ ]
+
+    # -- Node selector for server Pods.
+    nodeSelector: { }
+
+    # -- Tolerations for server Pods.
+    tolerations: [ ]
+
+    # -- Affinity rules for server Pods.
+    affinity: { }
+
+# -- Dashboard workload settings.
+dashboard:
+    # -- Dashboard replica count.
+    replicaCount: 1
+
+    # -- Dashboard container image settings.
+    image:
+        # -- Image repository.
+        repository: netbirdio/dashboard
+        # -- Kubernetes image pull policy.
+        pullPolicy: IfNotPresent
+        # -- Image tag. Empty uses Chart.appVersion.
+        tag: ""
+        # -- Optional immutable image digest.
+        digest: ""
+
+    # -- Additional dashboard Pod annotations.
+    podAnnotations: { }
+    # -- Additional dashboard Pod labels.
+    podLabels: { }
+
+    # -- Dashboard Pod-level security context.
+    podSecurityContext:
+        seccompProfile:
+            type: RuntimeDefault
+
+    # -- Dashboard container security context.
+    securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+            drop: [ ALL ]
+            add: [ NET_BIND_SERVICE, CHOWN, SETGID, SETUID, DAC_OVERRIDE ]
+
+    # -- Dashboard Service settings.
+    service:
+        # -- Dashboard Service type.
+        type: ClusterIP
+        # -- Dashboard Service port.
+        port: 80
+
+    # -- Dashboard CPU and memory requests/limits.
+    resources:
+        requests:
+            cpu: 50m
+            memory: 64Mi
+        limits:
+            cpu: 200m
+            memory: 256Mi
+
+    # -- Additional environment variables.
+    env: [ ]
+    # -- Additional envFrom sources such as Secret or ConfigMap references.
+    envFrom: [ ]
+    # -- Dashboard health probe switches.
+    probes:
+        # -- Enable NetBird dashboard health probes.
+        enabled: true
+
+    # -- Additional dashboard volumes.
+    extraVolumes: [ ]
+    # -- Additional dashboard volume mounts.
+    extraVolumeMounts: [ ]
+
+    # -- Node selector for dashboard Pods.
+    nodeSelector: { }
+
+    # -- Tolerations for dashboard Pods.
+    tolerations: [ ]
+
+    # -- Affinity rules for dashboard Pods.
+    affinity: { }
+
+# -- NetBird server metrics settings.
+metrics:
+    # -- Expose the metrics container and Service port.
+    enabled: true
+    # -- Metrics port.
+    port: 9090
+
+# -- Shared health probe timing settings.
+probes:
+    startup:
+        # -- Enable startup probes for both workloads.
+        enabled: true
+        # -- Delay before the first startup probe.
+        initialDelaySeconds: 5
+        # -- Seconds between startup probes.
+        periodSeconds: 10
+        # -- Startup probe timeout in seconds.
+        timeoutSeconds: 3
+        # -- Number of startup failures allowed.
+        failureThreshold: 30
+    liveness:
+        # -- Enable liveness probes for both workloads.
+        enabled: true
+        # -- Delay before the first liveness probe.
+        initialDelaySeconds: 0
+        # -- Seconds between liveness probes.
+        periodSeconds: 30
+        # -- Liveness probe timeout in seconds.
+        timeoutSeconds: 5
+        # -- Number of liveness failures allowed.
+        failureThreshold: 3
+    readiness:
+        # -- Enable readiness probes for both workloads.
+        enabled: true
+        # -- Delay before the first readiness probe.
+        initialDelaySeconds: 0
+        # -- Seconds between readiness probes.
+        periodSeconds: 10
+        # -- Readiness probe timeout in seconds.
+        timeoutSeconds: 5
+        # -- Number of readiness failures allowed.
+        failureThreshold: 6
+
+# -- Bundled Bitnami PostgreSQL dependency values.
+postgresql:
+    # -- Install PostgreSQL when selected by database mode auto/postgresql.
+    enabled: true
+    auth:
+        # -- PostgreSQL username.
+        username: netbird
+        # -- PostgreSQL database name.
+        database: netbird
+        # -- PostgreSQL superuser password. Use an external Secret in production.
+        postgresPassword: ""
+    primary:
+        persistence:
+            # -- Persist bundled PostgreSQL data.
+            enabled: true
+        # -- Bundled PostgreSQL resource requests/limits.
+        resources:
+            requests:
+                cpu: 100m
+                memory: 256Mi
+            limits:
+                cpu: 500m
+                memory: 512Mi
+
+# -- Optional first-user and personal API token bootstrap Job.
+bootstrap:
+    # -- Enable bootstrap credentials, setup PAT support and the Job.
+    enabled: false
+    # -- Create the first NetBird user through /api/setup. Must be true for the current PAT flow.
+    createUser: true
+    # -- Generate and persist a personal API token. Must be true with createUser for the Job to run.
+    generateAPIKey: true
+    # -- Secret name receiving the generated token. Empty uses <fullname>-mgmt-api-key.
+    apiKeySecretName: ""
+    # -- Existing Secret containing bootstrap credentials. Keys are configured below.
+    existingCredentialsSecret: ""
+    # -- Credentials used only when existingCredentialsSecret is empty. Prefer an external Secret in production.
+    credentials:
+        email: ""
+        name: ""
+        password: ""
+        emailKey: email
+        nameKey: name
+        passwordKey: password
+    # -- Job image. It must provide apk, curl, jq and kubectl.
+    image:
+        repository: alpine
+        tag: "3.20"
+        pullPolicy: IfNotPresent
+    # -- Dedicated bootstrap ServiceAccount settings.
+    serviceAccount:
+        create: true
+        name: ""
+        annotations: { }
+    # -- Job annotations. Hook annotations are recommended for Helm/Argo upgrades.
+    jobAnnotations:
+        "helm.sh/hook": post-install,post-upgrade
+        "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # -- Maximum Job retries.
+    backoffLimit: 5
+    # -- Job resource requests/limits.
+    resources:
+        requests:
+            cpu: 10m
+            memory: 32Mi
+        limits:
+            cpu: 100m
+            memory: 128Mi

@@ -1,0 +1,31 @@
+{{- if and .Values.gateway.enabled (not .Values.ingress.enabled) -}}
+{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/HTTPRoute" -}}
+{{- $fullName := include "netbird.fullname" . -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+    name: {{ $fullName }}-dashboard
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+spec:
+    {{- with .Values.gateway.parentRefs }}
+    parentRefs:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    hostnames:
+        - {{ .Values.domain | quote }}
+    rules:
+        -   backendRefs:
+                -   group: ''
+                    kind: Service
+                    name: {{ $fullName }}-dashboard
+                    port: {{ .Values.dashboard.service.port }}
+            matches:
+                -   path:
+                        type: PathPrefix
+                        value: /
+            timeouts:
+                request: 3600s
+                backendRequest: 3600s
+{{- end }}
+{{- end }}

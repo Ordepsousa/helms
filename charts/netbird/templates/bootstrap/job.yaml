@@ -1,0 +1,91 @@
+{{- if and .Values.bootstrap.enabled .Values.bootstrap.createUser .Values.bootstrap.generateAPIKey }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: {{ include "netbird.fullname" . }}-bootstrap
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+    {{- with .Values.bootstrap.jobAnnotations }}
+    annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+spec:
+    backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+    template:
+        metadata:
+            labels:
+                {{- include "netbird.labels" . | nindent 16 }}
+                app.kubernetes.io/component: bootstrap
+        spec:
+            serviceAccountName: {{ include "netbird.bootstrapServiceAccountName" . }}
+            restartPolicy: OnFailure
+            containers:
+                - name: bootstrap
+                  image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
+                  imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+                  env:
+                      - name: NB_EMAIL
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
+                                key: {{ .Values.bootstrap.credentials.emailKey }}
+                      - name: NB_NAME
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
+                                key: {{ .Values.bootstrap.credentials.nameKey }}
+                      - name: NB_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
+                                key: {{ .Values.bootstrap.credentials.passwordKey }}
+                  command: ["/bin/sh", "-c"]
+                  args:
+                      - |
+                          set -eu
+                          apk add --no-cache curl jq kubectl
+
+                          SERVER_URL="http://{{ include "netbird.serverServiceName" . }}"
+                          DASHBOARD_URL="http://{{ include "netbird.dashboardServiceName" . }}"
+                          API_SECRET="{{ include "netbird.bootstrapApiKeySecretName" . }}"
+
+                          echo "Waiting for NetBird server..."
+                          until curl -fsS "$SERVER_URL/api/instance" >/dev/null; do
+                            sleep 3
+                          done
+
+                          echo "Waiting for NetBird dashboard..."
+                          until curl -fsS "$DASHBOARD_URL/" >/dev/null; do
+                            sleep 3
+                          done
+
+                          if kubectl get secret "$API_SECRET" -o jsonpath='{.data.NB_API_KEY}' 2>/dev/null | grep -q .; then
+                            echo "API key Secret already contains NB_API_KEY."
+                            exit 0
+                          fi
+
+                          payload=$(jq -n \
+                            --arg email "$NB_EMAIL" \
+                            --arg name "$NB_NAME" \
+                            --arg password "$NB_PASSWORD" \
+                            '{email: $email, name: $name, password: $password, create_pat: true, pat_expire_in: 30}')
+
+                          response=$(curl -fsS -X POST "$SERVER_URL/api/setup" \
+                            -H "Content-Type: application/json" \
+                            -d "$payload")
+                          token=$(printf '%s' "$response" | jq -r '.personal_access_token // empty')
+
+                          if [ -z "$token" ]; then
+                            echo "NetBird setup did not return a personal access token." >&2
+                            printf '%s\n' "$response" >&2
+                            exit 1
+                          fi
+
+                          kubectl create secret generic "$API_SECRET" \
+                            --from-literal=NB_API_KEY="$token" \
+                            --dry-run=client -o yaml | kubectl apply -f -
+                          echo "Bootstrap API key Secret updated."
+                  resources:
+                      {{- toYaml .Values.bootstrap.resources | nindent 22 }}
+{{- end }}

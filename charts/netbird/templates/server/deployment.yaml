@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: {{ include "netbird.serverServiceName" . }}
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+spec:
+    replicas: {{ include "netbird.serverReplicaCount" . }}
+    strategy:
+        type: {{ include "netbird.serverStrategyType" . }}
+    selector:
+        matchLabels:
+            {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 12 }}
+    template:
+        metadata:
+            annotations:
+                checksum/config: {{ include (print $.Template.BasePath "/server/secret.yaml") . | sha256sum }}
+                {{- with .Values.server.podAnnotations }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+            labels:
+                {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 16 }}
+                {{- with .Values.server.podLabels }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+        spec:
+            serviceAccountName: {{ include "netbird.serviceAccountName" . }}
+            securityContext:
+                {{- toYaml .Values.server.podSecurityContext | nindent 16 }}
+            containers:
+                -   name: {{ .Chart.Name }}
+                    securityContext:
+                        {{ toYaml .Values.server.securityContext | nindent 24 }}
+                    image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag | default .Chart.AppVersion }}{{ if .Values.server.image.digest }}@{{ .Values.server.image.digest }}{{ end }}"
+                    imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+                    ports:
+                        -   name: http
+                            containerPort: {{ .Values.server.services.http.port }}
+                            protocol: TCP
+                        -   name: stun
+                            containerPort: {{ .Values.server.services.stun.port }}
+                            protocol: UDP
+                        {{- if .Values.metrics.enabled }}
+                        -   name: metrics
+                            containerPort: {{ .Values.metrics.port }}
+                            protocol: TCP
+                        {{- end }}
+                        {{- if .Values.server.probes.enabled }}
+                        -   name: health
+                            containerPort: 9000
+                            protocol: TCP
+                        {{- end }}
+                    args:
+                        - '--config'
+                        - '/etc/netbird/config.yaml'
+                        {{- range .Values.server.extraArgs }}
+                        - "{{ . }}"
+                        {{- end }}
+                    env:
+                        {{- if .Values.bootstrap.enabled }}
+                        -   name: NB_SETUP_PAT_ENABLED
+                            value: "true"
+                        {{- end }}
+                        {{- range .Values.server.env }}
+                        -   name: {{ .name }}
+                            {{- if hasKey . "valueFrom" }}
+                            valueFrom:
+                            {{- toYaml .valueFrom | nindent 28 }}
+                            {{- else }}
+                            value: {{ default "" .value | quote }}
+                            {{- end }}
+                        {{- end }}
+                    {{- with .Values.server.envFrom }}
+                    envFrom:
+                        {{- toYaml . | nindent 24 }}
+                    {{- end }}
+                    {{- if and .Values.server.probes.enabled .Values.probes.startup.enabled }}
+                    startupProbe:
+                        tcpSocket:
+                            port: health
+                        initialDelaySeconds: {{ .Values.probes.startup.initialDelaySeconds }}
+                        periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+                        timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+                        failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+                    {{- end }}
+                    {{- if and .Values.server.probes.enabled .Values.probes.liveness.enabled }}
+                    livenessProbe:
+                        tcpSocket:
+                            port: health
+                        initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+                        periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+                        timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+                        failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+                    {{- end }}
+                    {{- if and .Values.server.probes.enabled .Values.probes.readiness.enabled }}
+                    readinessProbe:
+                        tcpSocket:
+                            port: health
+                        initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+                        periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+                        timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+                        failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+                    {{- end }}
+                    resources:
+                        {{ toYaml .Values.server.resources | nindent 24 }}
+                    volumeMounts:
+                        -   name: data
+                            mountPath: {{ .Values.server.persistence.mountPath | quote }}
+                        -   name: config
+                            mountPath: /etc/netbird
+                            readOnly: true
+                        {{- with .Values.server.extraVolumeMounts }}
+                        {{ toYaml . | nindent 24 }}
+                        {{- end }}
+            volumes:
+                -   name: config
+                    secret:
+                        secretName: {{ include "netbird.configSecretName" . }}
+                        items:
+                            -   key: {{ if .Values.server.config.existingSecret }}{{ .Values.server.config.existingSecretKey | quote }}{{ else }}"config.yaml"{{ end }}
+                                path: config.yaml
+                -   name: data
+                    {{- if .Values.server.persistence.existingClaim }}
+                    persistentVolumeClaim:
+                        claimName: {{ .Values.server.persistence.existingClaim | quote }}
+                    {{- else if .Values.server.persistence.enabled }}
+                    persistentVolumeClaim:
+                        claimName: {{ include "netbird.dataVolumeName" . }}
+                    {{- else }}
+                    emptyDir: { }
+                    {{- end }}
+                {{- with .Values.server.extraVolumes }}
+                {{ toYaml . | nindent 26 }}
+                {{- end }}
+            {{- with .Values.server.nodeSelector }}
+            nodeSelector:
+                {{- toYaml . | nindent 16 }}
+            {{- end }}
+            {{- with .Values.server.affinity }}
+            affinity:
+                {{- toYaml . | nindent 16 }}
+            {{- end }}
+            {{- with .Values.server.tolerations }}
+            tolerations:
+                {{- toYaml . | nindent 16 }}
+            {{- end }}

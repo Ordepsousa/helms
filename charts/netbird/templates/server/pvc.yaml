@@ -1,0 +1,27 @@
+{{- if and .Values.server.persistence.enabled (not .Values.server.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: {{ include "netbird.dataVolumeName" . }}
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+    annotations:
+        "helm.sh/resource-policy": keep
+        {{- with .Values.server.persistence.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+spec:
+    {{- with .Values.server.persistence.accessModes }}
+    accessModes:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    resources:
+        requests:
+            storage: {{ .Values.server.persistence.size | quote }}
+    {{- if .Values.server.persistence.storageClass }}
+    storageClassName: {{ .Values.server.persistence.storageClass | quote }}
+    {{- end }}
+    {{- if .Values.server.persistence.volumeMode }}
+    volumeMode: {{ .Values.server.persistence.volumeMode | quote }}
+    {{- end }}
+{{- end }}

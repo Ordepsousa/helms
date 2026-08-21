@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: {{ include "netbird.dashboardServiceName" . }}
+    labels:
+        {{- include "netbird.labels" . | nindent 8 }}
+spec:
+    type: {{ .Values.dashboard.service.type }}
+    ports:
+        -   name: http
+            targetPort: http
+            protocol: TCP
+            port: {{ .Values.dashboard.service.port }}
+    selector:
+        {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "dashboard") | nindent 8 }}
