@@ -142,10 +142,11 @@ jobs:
                     echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
                     echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            -   name: Setup GPG keyring (Optional)
-                if: steps.semver.outputs.skip != 'true' && secrets.GPG_KEYRING != ''
+            -   name: Setup GPG keyring
+                if: steps.semver.outputs.skip != 'true'
                 run: |
                     echo "${{ secrets.GPG_KEYRING }}" | base64 -d > /tmp/secring.gpg
+                    echo "GPG keyring imported ($(wc -c < /tmp/secring.gpg) bytes)"
 
             -   name: Build Helm dependencies
                 if: steps.semver.outputs.skip != 'true'
