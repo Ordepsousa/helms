@@ -75,9 +75,8 @@ jobs:
 
             -   name: Lowercase repository owner
                 id: lowercase_owner
-                uses: ASzc/change-string-case-action@v7
-                with:
-                    string: ${{ github.repository_owner }}
+                run: |
+                    echo "lowercase=${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
 
             -   name: Calculate semantic version
                 id: semver
