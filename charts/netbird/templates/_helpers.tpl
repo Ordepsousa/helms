@@ -164,6 +164,32 @@ without an external database configuration.
 {{- and (eq (include "netbird.databaseMode" .) "postgresql") .Values.postgresql.enabled -}}
 {{- end -}}
 
+{{- define "netbird.storeEngine" -}}
+{{- $mode := include "netbird.databaseMode" . -}}
+{{- if eq $mode "sqlite" -}}sqlite
+{{- else if eq $mode "postgresql" -}}postgres
+{{- else -}}{{ .Values.server.database.external.engine | default "postgres" }}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.databasePasswordSecretName" -}}
+{{- if eq (include "netbird.databaseMode" .) "postgresql" -}}
+{{- printf "%s-postgresql" .Release.Name -}}
+{{- else if .Values.server.database.external.existingSecret -}}
+{{- .Values.server.database.external.existingSecret -}}
+{{- else -}}
+{{- printf "%s-database" (include "netbird.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.databasePasswordSecretKey" -}}
+{{- if eq (include "netbird.databaseMode" .) "postgresql" -}}
+password
+{{- else -}}
+{{- .Values.server.database.external.existingSecretPasswordKey | default "database-password" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "netbird.databaseHost" -}}
 {{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
 {{- printf "%s-postgresql" .Release.Name -}}
@@ -181,6 +207,10 @@ without an external database configuration.
 {{- end -}}
 {{- end -}}
 
+{{- define "netbird.databaseName" -}}
+{{- if eq (include "netbird.databaseMode" .) "postgresql" -}}{{ .Values.postgresql.auth.database }}{{- else -}}{{ .Values.server.database.external.name }}{{- end -}}
+{{- end -}}
+
 {{- define "netbird.databaseUser" -}}
 {{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
 {{- required "postgresql.auth.username is required for bundled PostgreSQL" .Values.postgresql.auth.username -}}
@@ -194,6 +224,52 @@ without an external database configuration.
 {{- required "postgresql.auth.postgresPassword is required for bundled PostgreSQL" .Values.postgresql.auth.postgresPassword -}}
 {{- else -}}
 {{- include "netbird.databaseExternalPassword" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.storeConfigDsn" -}}
+{{- if eq (include "netbird.databaseMode" .) "external" -}}
+{{- .Values.server.database.external.dsn -}}
+{{- else -}}
+{{- "" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.storeDsnEnvName" -}}
+NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -}}MYSQL{{- else -}}POSTGRES{{- end -}}_DSN
+{{- end -}}
+
+{{- define "netbird.storeDsnTemplate" -}}
+{{- $mode := include "netbird.databaseMode" . -}}
+{{- if eq (include "netbird.storeEngine" .) "mysql" -}}
+{{- printf "%s:%s@tcp(%s:%s)/%s" (include "netbird.databaseUser" .) "$(NETBIRD_DATABASE_PASSWORD)" (include "netbird.databaseHost" .) (include "netbird.databasePort" .) (include "netbird.databaseName" .) -}}
+{{- else -}}
+{{- printf "host=%s user=%s password=%s dbname=%s port=%s sslmode=%s" (include "netbird.databaseHost" .) (include "netbird.databaseUser" .) "$(NETBIRD_DATABASE_PASSWORD)" (include "netbird.databaseName" .) (include "netbird.databasePort" .) (ternary "disable" (.Values.server.database.external.sslMode | default "disable") (eq $mode "postgresql")) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.serverEnv" -}}
+{{- if ne (include "netbird.databaseMode" .) "sqlite" -}}
+-   name: NETBIRD_DATABASE_PASSWORD
+    valueFrom:
+        secretKeyRef:
+            name: {{ include "netbird.databasePasswordSecretName" . }}
+            key: {{ include "netbird.databasePasswordSecretKey" . }}
+-   name: {{ include "netbird.storeDsnEnvName" . }}
+    value: {{ include "netbird.storeDsnTemplate" . | quote }}
+{{- end -}}
+{{- if .Values.bootstrap.enabled -}}
+-   name: NB_SETUP_PAT_ENABLED
+    value: "true"
+{{- end -}}
+{{- range .Values.server.env -}}
+-   name: {{ .name }}
+    {{- if hasKey . "valueFrom" -}}
+    valueFrom:
+    {{- toYaml .valueFrom | nindent 28 }}
+    {{- else -}}
+    value: {{ default "" .value | quote }}
+    {{- end -}}
 {{- end -}}
 {{- end -}}
 
