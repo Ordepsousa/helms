@@ -38,24 +38,39 @@ jobs:
             -   name: Detect changed charts
                 id: changed
                 run: |
-                    BASE_SHA="${{ github.event.before }}"
-                    if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-                      BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-                    fi
+                    CHANGED_CHART_LIST="[]"
                     
-                    if [ -n "$BASE_SHA" ] && [ "${{ github.event_name }}" = "push" ]; then
-                      CHANGED_DIRS=$(git diff --name-only "$BASE_SHA" HEAD -- charts/ \
-                        | grep -v -E '(README\.md|examples/|docs/)' \
-                        | cut -d'/' -f2 | sort -u \
-                        | while read -r dir; do [ -f "charts/$dir/Chart.yaml" ] && echo "$dir"; done \
-                        | jq -R -s -c 'split("\n") | map(select(length > 0))')
-                    else
-                      CHANGED_DIRS=$(ls -d charts/*/ 2>/dev/null | xargs -I{} basename {} \
-                        | jq -R -s -c 'split("\n") | map(select(length > 0))')
-                    fi
+                    git fetch --tags --force 2>/dev/null || true
                     
-                    echo "charts=$CHANGED_DIRS" >> "$GITHUB_OUTPUT"
-                    echo "Changed charts: $CHANGED_DIRS"
+                    for chart_dir in charts/*/; do
+                      [ -d "$chart_dir" ] || continue
+                      CHART=$(basename "$chart_dir")
+                    
+                      [ -f "charts/$CHART/Chart.yaml" ] || continue
+                    
+                      LATEST_TAG=$(git tag --sort=-v:refname | grep -E "^${CHART}-v[0-9]+\.[0-9]+\.[0-9]+$" | head -1)
+                    
+                      if [ -z "$LATEST_TAG" ]; then
+                        echo "Chart '$CHART' has no previous tags. Marking as changed."
+                        CHANGED_CHART_LIST=$(echo "$CHANGED_CHART_LIST" | jq --arg c "$CHART" '. + [$c]')
+                      else
+                        MODIFIED_FILES=$(git diff --name-only "$LATEST_TAG" HEAD -- "charts/$CHART/")
+                    
+                        FILTERED_FILES=$(echo "$MODIFIED_FILES" | grep -v -E '(README\.md|examples/|docs/)' || true)
+                    
+                        if [ -n "$FILTERED_FILES" ]; then
+                          echo "Chart '$CHART' has changes since tag $LATEST_TAG."
+                          CHANGED_CHART_LIST=$(echo "$CHANGED_CHART_LIST" | jq --arg c "$CHART" '. + [$c]')
+                        else
+                          echo "Chart '$CHART' has no relevant changes since $LATEST_TAG."
+                        fi
+                      fi
+                    done
+                    
+                    UNIQUE_CHARTS=$(echo "$CHANGED_CHART_LIST" | jq -c 'unique')
+                    
+                    echo "charts=$UNIQUE_CHARTS" >> "$GITHUB_OUTPUT"
+                    echo "Changed charts: $UNIQUE_CHARTS"
 
     publish:
         name: Publish - ${{ matrix.chart }}
@@ -69,7 +84,7 @@ jobs:
                 chart: ${{ fromJson(needs.detect.outputs.charts) }}
         steps:
             -   name: Checkout
-                uses: actions/checkout@v7
+                uses: actions/checkout@v4
                 with:
                     fetch-depth: 0
 
