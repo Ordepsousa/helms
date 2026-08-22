@@ -28,6 +28,37 @@ spec:
             serviceAccountName: {{ include "netbird.serviceAccountName" . }}
             securityContext:
                 {{- toYaml .Values.server.podSecurityContext | nindent 16 }}
+            {{- if and (ne (include "netbird.databaseMode" .) "sqlite") (include "netbird.databaseHost" .) (include "netbird.databasePort" .) }}
+            initContainers:
+                -   name: wait-for-database
+                    image: busybox:1.37.0
+                    imagePullPolicy: IfNotPresent
+                    command:
+                        - sh
+                        - -ec
+                        - |
+                            until nc -z {{ include "netbird.databaseHost" . | quote }} {{ include "netbird.databasePort" . | quote }}; do
+                              sleep 2
+                            done
+                    securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                            drop:
+                                - ALL
+                        readOnlyRootFilesystem: true
+                        runAsNonRoot: true
+                        runAsUser: 65534
+                        runAsGroup: 65534
+                        seccompProfile:
+                            type: RuntimeDefault
+                    resources:
+                        requests:
+                            cpu: 10m
+                            memory: 16Mi
+                        limits:
+                            cpu: 50m
+                            memory: 64Mi
+              {{- end }}
             containers:
                 -   name: {{ .Chart.Name }}
                     securityContext:

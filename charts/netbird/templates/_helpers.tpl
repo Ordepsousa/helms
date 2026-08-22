@@ -168,7 +168,16 @@ without an external database configuration.
 {{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
 {{- printf "%s-postgresql" .Release.Name -}}
 {{- else -}}
-{{- required "server.database.external.host is required for external PostgreSQL" .Values.server.database.external.host -}}
+{{- required "server.database.external.host is required for external mode" .Values.server.database.external.host -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "netbird.databasePort" -}}
+{{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
+5432
+{{- else -}}
+{{ .Values.server.database.external.port | toString }}
+{{- required "server.database.external.port is required for external mode" .Values.server.database.external.port -}}
 {{- end -}}
 {{- end -}}
 
@@ -176,7 +185,7 @@ without an external database configuration.
 {{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
 {{- required "postgresql.auth.username is required for bundled PostgreSQL" .Values.postgresql.auth.username -}}
 {{- else -}}
-{{- required "server.database.external.username is required for external PostgreSQL" .Values.server.database.external.username -}}
+{{- required "server.database.external.username is required for external mode" .Values.server.database.external.username -}}
 {{- end -}}
 {{- end -}}
 
