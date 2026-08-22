@@ -8,7 +8,7 @@ on:
             - '!charts/**/README.md'
             - '!charts/**/examples/**'
             - '!charts/**/docs/**'
-            - '.github/workflows/publish.yml'
+            - '.github/workflows/publish.yaml'
     workflow_dispatch:
 
 concurrency:
