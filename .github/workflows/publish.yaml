@@ -22,7 +22,7 @@ permissions:
 
 env:
     HELM_VERSION: v3.15.4
-    OCI_REGISTRY: oci://ghcr.io/${{ github.repository_owner }}/helm
+    OCI_REGISTRY: oci://ghcr.io/${{ github.repository_owner | downcase }}/helm
 
 jobs:
     detect:
@@ -177,19 +177,12 @@ jobs:
                       helm package charts/${{ matrix.chart }} --destination .dist
                     fi
                     
-                    set +e
-                
                     for pkg in .dist/*.tgz; do
-                      echo "A enviar $pkg para $OCI_REGISTRY..."
-                      helm push "$pkg" "$OCI_REGISTRY"
-                      PUSH_STATUS=$?
-                      
-                      if [ $PUSH_STATUS -ne 0 ]; then
-                        echo "::error::Falha ao executar helm push no pacote $pkg (exit code: $PUSH_STATUS)"
-                        exit $PUSH_STATUS
-                      fi
+                      PUSH_OUTPUT=$(helm push "$pkg" "$OCI_REGISTRY" 2>&1)
+                      echo "$PUSH_OUTPUT"
+                      DIGEST=$(echo "$PUSH_OUTPUT" | grep -oE 'sha256:[a-f0-9]{64}')
+                      echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
                     done
-                    set -e
 
             -   name: Sign OCI artifact with Cosign
                 if: steps.semver.outputs.skip != 'true' && steps.push.outputs.digest != ''
