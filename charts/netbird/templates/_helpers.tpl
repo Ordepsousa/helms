@@ -116,13 +116,6 @@ Required server authentication secret.
 {{- end -}}
 
 {{/*
-Required server database encryption key.
-*/}}
-{{- define "netbird.encryptionKey" -}}
-{{- required "server.encryptionKey is required" .Values.server.encryptionKey -}}
-{{- end -}}
-
-{{/*
 Resolve automatic database selection from the dependency switch.
 */}}
 {{- define "netbird.databaseMode" -}}
@@ -228,7 +221,7 @@ password
 {{- end -}}
 
 {{- define "netbird.storeConfigDsn" -}}
-{{- if eq (include "netbird.databaseMode" .) "external" -}}
+{{- if and (eq (include "netbird.databaseMode" .) "external") .Values.server.database.external.dsn -}}
 {{- .Values.server.database.external.dsn -}}
 {{- else -}}
 {{- "" -}}

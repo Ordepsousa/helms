@@ -8,7 +8,6 @@ trap 'rm -rf "$tmp_dir"' EXIT
 base_values=(
   --set domain=example.com
   --set server.authSecret=test-auth
-  --set server.encryptionKey=test-key
 )
 
 render() {

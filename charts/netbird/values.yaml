@@ -161,8 +161,6 @@ server:
             # -- Raw database DSN. Takes precedence over host and credentials.
             dsn: ""
 
-    # -- NetBird store encryption key. Required for generated SQLite configuration.
-    encryptionKey: '' # openssl rand -base64 32
     # -- NetBird authentication secret. Required for generated configuration.
     authSecret: '' # openssl rand -base64 32
 

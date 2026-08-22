@@ -418,7 +418,6 @@
                         "services",
                         "database",
                         "persistence",
-                        "encryptionKey",
                         "authSecret",
                         "config",
                         "probes"
@@ -448,9 +447,6 @@
                         },
                         "persistence": {
                             "$ref": "#/definitions/persistence"
-                        },
-                        "encryptionKey": {
-                            "type": "string"
                         },
                         "authSecret": {
                             "type": "string"
@@ -505,9 +501,6 @@
                             "then": {
                                 "properties": {
                                     "authSecret": {
-                                        "type": "string"
-                                    },
-                                    "encryptionKey": {
                                         "type": "string"
                                     }
                                 }
