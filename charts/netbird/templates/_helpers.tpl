@@ -258,18 +258,9 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 -   name: {{ include "netbird.storeDsnEnvName" . }}
     value: {{ include "netbird.storeDsnTemplate" . | quote }}
 {{- end -}}
-{{- if .Values.bootstrap.enabled -}}
+{{- if .Values.bootstrap.enabled }}
 -   name: NB_SETUP_PAT_ENABLED
     value: "true"
-{{- end -}}
-{{- range .Values.server.env -}}
--   name: {{ .name }}
-    {{- if hasKey . "valueFrom" -}}
-    valueFrom:
-    {{- toYaml .valueFrom | nindent 28 }}
-    {{- else -}}
-    value: {{ default "" .value | quote }}
-    {{- end -}}
 {{- end -}}
 {{- end -}}
 

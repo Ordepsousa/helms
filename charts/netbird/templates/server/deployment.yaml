@@ -89,9 +89,18 @@ spec:
                         - "{{ . }}"
                         {{- end }}
                     {{- $serverEnv := include "netbird.serverEnv" . }}
-                    {{- if $serverEnv }}
+                    {{- if or $serverEnv .Values.server.env }}
                     env:
                         {{- $serverEnv | nindent 24 }}
+                        {{- range .Values.server.env -}}
+                        -   name: {{ .name }}
+                            {{- if hasKey . "valueFrom" -}}
+                            valueFrom:
+                                {{- toYaml .valueFrom | nindent 32 }}
+                            {{- else -}}
+                            value: {{ default "" .value | quote }}
+                            {{- end -}}
+                        {{- end -}}
                     {{- end }}
                     {{- with .Values.server.envFrom }}
                     envFrom:
