@@ -180,7 +180,9 @@ jobs:
                     for pkg in .dist/*.tgz; do
                       PUSH_OUTPUT=$(helm push "$pkg" "$OCI_REGISTRY" 2>&1)
                       echo "$PUSH_OUTPUT"
-                      DIGEST=$(echo "$PUSH_OUTPUT" | grep -oE 'sha256:[a-f0-9]{64}')
+                      
+                      # Protegemos o grep com '|| true' para evitar que o set -e rebente o job se o regex falhar
+                      DIGEST=$(echo "$PUSH_OUTPUT" | grep -oE 'sha256:[a-f0-9]{64}' || true)
                       echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
                     done
 
