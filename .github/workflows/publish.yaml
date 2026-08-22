@@ -22,7 +22,7 @@ permissions:
 
 env:
     HELM_VERSION: v3.15.4
-    OCI_REGISTRY: oci://ghcr.io/${{ github.repository_owner | downcase }}/helm
+    OCI_REGISTRY: oci://ghcr.io/ordepsousa/helm
 
 jobs:
     detect:
