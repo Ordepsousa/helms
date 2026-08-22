@@ -209,14 +209,14 @@ jobs:
                     git diff --cached --quiet || git commit -m "release(${{ matrix.chart }}): ${{ steps.semver.outputs.version }} [skip ci]"
                     
                     for attempt in 1 2 3 4 5; do
-                      git pull --rebase origin main && break
+                      git pull --rebase origin master && break
                       sleep $((attempt * 2))
                     done
                     
                     git tag -a "${{ steps.semver.outputs.tag }}" -m "Release ${{ matrix.chart }} v${{ steps.semver.outputs.version }}"
                     
                     for attempt in 1 2 3 4 5; do
-                      git push origin main --follow-tags && break
+                      git push origin master --follow-tags && break
                       sleep $((attempt * 2))
                     done
 
