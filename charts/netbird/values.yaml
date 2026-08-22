@@ -208,8 +208,8 @@ dashboard:
         repository: netbirdio/dashboard
         # -- Kubernetes image pull policy.
         pullPolicy: IfNotPresent
-        # -- Image tag. Empty uses Chart.appVersion.
-        tag: ""
+        # -- Image tag.
+        tag: "v2.90.10"
         # -- Optional immutable image digest.
         digest: ""
 
