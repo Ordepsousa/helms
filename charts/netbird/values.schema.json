@@ -187,7 +187,17 @@
                 "parentRefs": {
                     "type": "array",
                     "items": {
-                        "type": "object"
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        },
+                        "additionalProperties": true
                     }
                 },
                 "annotations": {
