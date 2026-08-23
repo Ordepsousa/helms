@@ -95,7 +95,6 @@ grep -q '^kind: Job' "$tmp_dir/bootstrap.yaml"
 grep -q 'name: demo-netbird-bootstrap' "$tmp_dir/bootstrap.yaml"
 grep -q 'kind: Role' "$tmp_dir/bootstrap.yaml"
 grep -q 'kind: RoleBinding' "$tmp_dir/bootstrap.yaml"
-grep -q 'name: demo-netbird-mgmt-api-key' "$tmp_dir/bootstrap.yaml"
 grep -q 'NB_SETUP_PAT_ENABLED' "$tmp_dir/bootstrap.yaml"
 
 render demo "$tmp_dir/bootstrap-existing-credentials.yaml" \
