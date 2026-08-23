@@ -68,6 +68,10 @@ NetBird server service name.
 {{- printf "%s-server" (include "netbird.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "netbird.serverRelayServiceName" -}}
+{{- printf "%s-server-relay" (include "netbird.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/*
 NetBird dashboard service name.
 */}}
