@@ -11,6 +11,7 @@ spec:
             targetPort: http
             protocol: TCP
             port: {{ .Values.server.services.http.port }}
+            appProtocol: kubernetes.io/ws
         {{- if .Values.metrics.enabled }}
         -   name: metrics
             port: {{ .Values.metrics.port }}
