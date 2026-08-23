@@ -21,9 +21,8 @@ render demo "$tmp_dir/bundled.yaml" \
   --set postgresql.auth.postgresPassword=db-password \
   --set server.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
-grep -q 'host: "demo-postgresql"' "$tmp_dir/bundled.yaml"
+grep -q 'value: "host=demo-postgresql user=netbird password=$(NETBIRD_DATABASE_PASSWORD)' "$tmp_dir/bundled.yaml"
 grep -q 'kind: StatefulSet' "$tmp_dir/bundled.yaml"
-grep -q 'password: "db-password"' "$tmp_dir/bundled.yaml"
 grep -q 'netbird-server:0.77.0@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' "$tmp_dir/bundled.yaml"
 
 render demo "$tmp_dir/sqlite.yaml" \
@@ -42,7 +41,7 @@ render demo "$tmp_dir/external.yaml" \
   --set server.database.external.username=netbird \
   --set server.database.external.password=db-password
 
-grep -q 'host: "db.example"' "$tmp_dir/external.yaml"
+grep -q 'value: "host=db.example' "$tmp_dir/external.yaml"
 ! grep -q 'kind: StatefulSet' "$tmp_dir/external.yaml"
 
 render demo "$tmp_dir/auto-external.yaml" \
@@ -52,7 +51,7 @@ render demo "$tmp_dir/auto-external.yaml" \
   --set server.database.external.password=db-password
 
 grep -q 'engine: "postgres"' "$tmp_dir/auto-external.yaml"
-grep -q 'host: "db.example"' "$tmp_dir/auto-external.yaml"
+grep -q 'value: "host=db.example' "$tmp_dir/auto-external.yaml"
 
 render demo "$tmp_dir/mysql.yaml" \
   --set server.database.mode=external \
@@ -64,7 +63,7 @@ render demo "$tmp_dir/mysql.yaml" \
   --set server.database.external.password=db-password
 
 grep -q 'engine: "mysql"' "$tmp_dir/mysql.yaml"
-grep -q 'port: 3306' "$tmp_dir/mysql.yaml"
+grep -q 'tcp(mysql.example:3306)' "$tmp_dir/mysql.yaml"
 
 render demo "$tmp_dir/ingress.yaml" \
   --set ingress.enabled=true \

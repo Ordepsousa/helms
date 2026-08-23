@@ -195,7 +195,6 @@ password
 {{- if eq (include "netbird.databaseUsesBundledPostgresql" . | trim) "true" -}}
 5432
 {{- else -}}
-{{ .Values.server.database.external.port | toString }}
 {{- required "server.database.external.port is required for external mode" .Values.server.database.external.port -}}
 {{- end -}}
 {{- end -}}
