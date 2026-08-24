@@ -26,6 +26,10 @@ spec:
                 -   path:
                         type: PathPrefix
                         value: /oauth2
+                -   headers:
+                        -   type: RegularExpression
+                            name: content-type
+                            value: "^application/grpc.*"
         -   backendRefs:
                 -   group: ''
                     kind: Service
