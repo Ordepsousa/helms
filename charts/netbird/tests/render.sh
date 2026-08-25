@@ -79,7 +79,7 @@ render demo "$tmp_dir/gateway.yaml" \
   --set postgresql.auth.postgresPassword=db-password \
   --api-versions gateway.networking.k8s.io/v1/HTTPRoute \
   --api-versions gateway.networking.k8s.io/v1/GRPCRoute \
-  --api-versions gateway.networking.k8s.io/v1alpha2/UDPRoute
+  --api-versions gateway.networking.k8s.io/v1/UDPRoute
 
 ! grep -q '^kind: Ingress' "$tmp_dir/gateway.yaml"
 grep -q '^kind: UDPRoute' "$tmp_dir/gateway.yaml"

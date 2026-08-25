@@ -1,6 +1,5 @@
 {{- if and .Values.gateway.enabled (not .Values.ingress.enabled) -}}
-{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1alpha2/UDPRoute" -}}
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: UDPRoute
 metadata:
     name: {{ include "netbird.fullname" . }}-stun
@@ -21,5 +20,4 @@ spec:
                     kind: Service
                     name: {{ include "netbird.stunServiceName" . }}
                     port: {{ .Values.server.services.stun.port }}
-{{- end }}
 {{- end }}
