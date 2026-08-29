@@ -7,8 +7,8 @@ metadata:
         {{- include "netbird.labels" . | nindent 8 }}
         app.kubernetes.io/component: bootstrap
     annotations:
-        helm.sh/hook: post-install,post-upgrade
-        helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+        "helm.sh/hook": post-install,post-upgrade
+        "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded
         {{- with .Values.bootstrap.jobAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
