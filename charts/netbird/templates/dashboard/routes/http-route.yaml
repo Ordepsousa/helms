@@ -19,6 +19,7 @@ spec:
                     kind: Service
                     name: {{ include "netbird.dashboardServiceName" . }}
                     port: {{ .Values.dashboard.service.port }}
+                    weight: 1
             matches:
                 -   path:
                         type: PathPrefix

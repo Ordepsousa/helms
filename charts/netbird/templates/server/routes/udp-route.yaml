@@ -20,4 +20,5 @@ spec:
                     kind: Service
                     name: {{ include "netbird.stunServiceName" . }}
                     port: {{ .Values.server.services.stun.port }}
+                    weight: 1
 {{- end }}
