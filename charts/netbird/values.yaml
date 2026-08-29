@@ -366,9 +366,7 @@ bootstrap:
         name: ""
         annotations: { }
     # -- Job annotations. Hook annotations are recommended for Helm/Argo upgrades.
-    jobAnnotations:
-        "helm.sh/hook": post-install,post-upgrade
-        "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    jobAnnotations: { }
     # -- Maximum Job retries.
     backoffLimit: 5
     # -- Job resource requests/limits.
