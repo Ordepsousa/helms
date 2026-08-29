@@ -8,6 +8,8 @@ metadata:
         app.kubernetes.io/component: bootstrap
     {{- with .Values.bootstrap.jobAnnotations }}
     annotations:
+        helm.sh/hook: post-install,post-upgrade
+        helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
         {{- toYaml . | nindent 8 }}
     {{- end }}
 spec:
