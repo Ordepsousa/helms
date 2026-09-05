@@ -1,0 +1,117 @@
+{{- if and .Values.apiTokenJob.create (or .Values.config.createUser .Values.config.existingCredentialsSecret) }}
+apiVersion: {{ include "common.capabilities.job.apiVersion" .}}
+kind: Job
+metadata:
+    name: {{ include "paperless.apiTokenJobName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.apiTokenJob.labels .Values.commonLabels ) "context" . ) }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" $) | nindent 8 }}
+        app.kubernetes.io/component: apiToken
+    annotations:
+        "helm.sh/hook": post-install, post-upgrade
+        "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded
+        {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.apiTokenJob.annotations .Values.commonAnnotations ) "context" . ) }}
+        {{- if or .Values.commonAnnotations .Values.apiTokenJob.annotations }}
+        {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+        {{- end }}
+spec:
+    backoffLimit: {{ .Values.apiTokenJob.backoffLimit }}
+    template:
+        metadata:
+            {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.apiTokenJob.podLabels .Values.commonLabels ) "context" . ) }}
+            labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" $) | nindent 16 }}
+                app.kubernetes.io/component: apiToken
+            {{- if .Values.apiTokenJob.podAnnotations }}
+            annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.apiTokenJob.podAnnotations "context" $ ) | nindent 16 }}
+            {{- end }}
+        spec:
+            serviceAccountName: {{ include "paperless.apiTokenServiceAccountName" . }}
+            restartPolicy: OnFailure
+            {{- if .Values.apiTokenJob.podSecurityContext.enabled }}
+            securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.apiTokenJob.podSecurityContext "context" $) | nindent 16 }}
+            {{- end }}
+            {{- include "paperless.imagePullSecrets" . | nindent 12 }}
+            containers:
+                -   name: generator
+                    image: {{ include "paperless.apiTokenImage" . | quote }}
+                    imagePullPolicy: {{ .Values.apiTokenJob.image.pullPolicy }}
+                    {{- if .Values.apiTokenJob.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.apiTokenJob.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    env:
+                        -   name: PAPERLESS_USER
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: name
+                        -   name: PAPERLESS_PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: password
+                        {{- if .Values.apiTokenJob.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.apiTokenJob.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    command:
+                        - sh
+                        - -c
+                        - |
+                            set -eu
+
+                            PAPERLESS_URL="http://{{ include "paperless.webServerName" . }}"
+                            SECRET_NAME="{{ include "paperless.apiKeySecretName" . }}"
+
+                            echo "Waiting for Paperless server..."
+                            until curl -fsS "$PAPERLESS_URL/api/" >/dev/null; do
+                              sleep 3
+                            done
+
+                            if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+                              echo "Token Secret already exists"
+                              exit 0
+                            fi
+
+                            echo "Requesting token from Paperless API..."
+                            response=$(curl -fsS -X POST "$PAPERLESS_URL/api/token/" \
+                              -H "Content-Type: application/json" \
+                              -d "{\"username\": \"$PAPERLESS_USER\", \"password\": \"$PAPERLESS_PASSWORD\"}")
+
+                            token=$(printf '%s' "$response" | jq -r '.token // empty')
+
+                            if [ -z "$token" ] || [ "$token" = "null" ]; then
+                              echo "Paperless did not return a token." >&2
+                              printf '%s\n' "$response" >&2
+                              exit 1
+                            fi
+
+                            kubectl create secret generic "$SECRET_NAME" \
+                              --from-literal=PAPERLESS_API_TOKEN="$token" \
+                              --dry-run=client -o yaml | kubectl apply -f -
+                            echo "Paperless API token Secret created/updated."
+                    {{- if .Values.apiTokenJob.startupProbe.enabled }}
+                    startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.apiTokenJob.startupProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    {{- if .Values.apiTokenJob.livenessProbe.enabled }}
+                    livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.apiTokenJob.livenessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    {{- if .Values.apiTokenJob.readinessProbe.enabled }}
+                    readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.apiTokenJob.readinessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    resources: {{- toYaml .Values.apiTokenJob.resources | nindent 24 }}
+                    {{- if .Values.apiTokenJob.extraVolumeMounts }}
+                    volumeMounts:
+                        {{- include "common.tplvalues.render" (dict "value" .Values.apiTokenJob.extraVolumeMounts "context" $) | nindent 24 }}
+                    {{- end }}
+            {{- if .Values.apiTokenJob.extraVolumes }}
+            volumes: {{- include "common.tplvalues.render" ( dict "value" .Values.apiTokenJob.extraVolumes "context" $ ) | nindent 16 }}
+            {{- end }}
+{{- end }}

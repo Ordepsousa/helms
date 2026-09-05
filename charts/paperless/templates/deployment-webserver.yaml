@@ -1,0 +1,129 @@
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+    name: {{ include "paperless.webServerName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.webserver.labels .Values.commonLabels ) "context" . ) }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" $) | nindent 8 }}
+        app.kubernetes.io/component: webserver
+    {{- if or .Values.commonAnnotations .Values.webserver.annotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.webserver.annotations .Values.commonAnnotations ) "context" . ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+    {{- end }}
+spec:
+    replicas: {{ include "paperless.webServerReplicaCount" . }}
+    strategy:
+        type: {{ include "paperless.webServerStrategyType" . }}
+    selector:
+        {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.webserver.podLabels .Values.commonLabels ) "context" . ) }}
+        matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" $) | nindent 12 }}
+            app.kubernetes.io/component: webserver
+    template:
+        metadata:
+            labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" $) | nindent 16 }}
+                app.kubernetes.io/component: webserver
+            {{- if .Values.webserver.podAnnotations }}
+            annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.webserver.podAnnotations "context" $ ) | nindent 16 }}
+            {{- end }}
+        spec:
+            {{- include "paperless.imagePullSecrets" . | nindent 12 }}
+            serviceAccountName: {{ include "paperless.serviceAccountName" . }}
+            {{- if .Values.webserver.podSecurityContext.enabled }}
+            securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.webserver.podSecurityContext "context" $) | nindent 16 }}
+            {{- end }}
+            initContainers: {{- include "paperless.waitForCore" . | nindent 16 }}
+            containers:
+                -   name: {{ .Chart.Name }}-webserver
+                    image: {{ include "paperless.image" . | quote }}
+                    imagePullPolicy: {{ .Values.image.pullPolicy }}
+                    command:
+                        - /bin/sh
+                        - -c
+                        - |
+                            python3 manage.py manage_superuser && \
+                            exec granian --interface asginl --ws --loop uvloop paperless.asgi:application
+                    {{- if .Values.webserver.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.webserver.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    ports:
+                        -   name: http
+                            containerPort: {{ .Values.webserver.service.port }}
+                            protocol: TCP
+                    env: {{- include "paperless.baseEnv" . | nindent 24 }}
+                        -   name: GRANIAN_HOST
+                            value: "::"
+                        -   name: GRANIAN_PORT
+                            value: "{{ .Values.webserver.service.port }}"
+                        {{- if or .Values.config.createUser .Values.config.existingCredentialsSecret }}
+                        -   name: PAPERLESS_ADMIN_USER
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: name
+                        -   name: PAPERLESS_ADMIN_PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: password
+                        -   name: PAPERLESS_ADMIN_MAIL
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: mail
+                        {{- end }}
+                        -   name: PAPERLESS_URL
+                            value: {{ .Values.config.domain | quote }}
+                        -   name: PAPERLESS_MEDIA_ROOT
+                            value: {{ .Values.persistence.media.mountPath | quote }}
+                        -   name: PAPERLESS_SCRATCH_DIR
+                            value: {{ include "paperless.scratchPath" . | quote }}
+                        {{- if .Values.webserver.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.webserver.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    {{- if .Values.webserver.startupProbe.enabled }}
+                    startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.webserver.startupProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    {{- if .Values.webserver.livenessProbe.enabled }}
+                    livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.webserver.livenessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    {{- if .Values.webserver.readinessProbe.enabled }}
+                    readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.webserver.readinessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: http
+                    {{- end }}
+                    resources: {{- toYaml .Values.webserver.resources | nindent 24 }}
+                    volumeMounts: {{- include "paperless.baseVolumeMounts" . | nindent 24 }}
+                        -   name: media
+                            mountPath: {{ .Values.persistence.media.mountPath }}
+                            {{- if .Values.persistence.media.subPath }}
+                            subPath: {{ .Values.persistence.media.subPath }}
+                            {{- end }}
+                        -   name: webserver-tmp
+                            mountPath: /tmp
+                        {{- if .Values.webserver.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.webserver.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+            volumes: {{- include "paperless.volumes" (dict "volumes" (list "data" "media") "context" $) | indent 16 }}
+                -   name: wait-tmp
+                    emptyDir: { }
+                -   name: webserver-tmp
+                    emptyDir: { }
+                {{- if .Values.webserver.extraVolumes }}
+                {{- include "common.tplvalues.render" ( dict "value" .Values.webserver.extraVolumes "context" $ ) | nindent 16 }}
+                {{- end }}
+            {{- if .Values.webserver.affinity }}
+            affinity: {{- include "common.tplvalues.render" (dict "value" .Values.webserver.affinity "context" $) | nindent 16 }}
+            {{- end }}
+            {{- if .Values.webserver.nodeSelector }}
+            nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.webserver.nodeSelector "context" $) | nindent 16 }}
+            {{- end }}
+            {{- if .Values.webserver.tolerations }}
+            tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.webserver.tolerations "context" $) | nindent 16 }}
+            {{- end }}

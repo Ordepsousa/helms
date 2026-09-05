@@ -1,0 +1,18 @@
+apiVersion: v2
+name: paperless
+description: A Helm chart to deploy paperless-ngx
+type: application
+version: 0.1.0
+appVersion: "3.1.0"
+dependencies:
+    -   name: common
+        repository: oci://registry-1.docker.io/bitnamicharts
+        version: 2.41.0
+    -   name: postgresql
+        version: 18.8.13
+        repository: oci://registry-1.docker.io/bitnamicharts
+        condition: postgresql.enabled
+    -   name: dragonfly
+        repository: oci://ghcr.io/dragonflydb/dragonfly/helm
+        version: v1.40.1
+        condition: dragonfly.enabled

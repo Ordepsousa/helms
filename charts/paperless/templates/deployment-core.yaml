@@ -1,0 +1,244 @@
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+    name: {{ include "paperless.coreName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.core.labels .Values.commonLabels ) "context" . ) }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" $) | nindent 8 }}
+        app.kubernetes.io/component: core
+    {{- if or .Values.commonAnnotations .Values.core.annotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.core.annotations .Values.commonAnnotations ) "context" . ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+    {{- end }}
+spec:
+    replicas: 1
+    strategy:
+        type: Recreate
+    selector:
+        {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.core.podLabels .Values.commonLabels ) "context" . ) }}
+        matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" $podLabels "context" $) | nindent 12 }}
+            app.kubernetes.io/component: core
+    template:
+        metadata:
+            labels: {{- include "common.labels.standard" (dict "customLabels" $podLabels "context" $) | nindent 16 }}
+                app.kubernetes.io/component: core
+            {{- if .Values.core.podAnnotations }}
+            annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.core.podAnnotations "context" $ ) | nindent 16 }}
+            {{- end }}
+        spec:
+            {{- include "paperless.imagePullSecrets" . | nindent 12 }}
+            serviceAccountName: {{ include "paperless.serviceAccountName" . }}
+            {{- if .Values.core.podSecurityContext.enabled }}
+            securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.podSecurityContext "context" $) | nindent 16 }}
+            {{- end }}
+            initContainers:
+                -   name: {{ .Chart.Name }}-migrations
+                    image: {{ include "paperless.image" . | quote }}
+                    imagePullPolicy: {{ .Values.image.pullPolicy }}
+                    command:
+                        - /bin/sh
+                        - -c
+                        - |
+                            set -eu
+                            DB_ENGINE="${PAPERLESS_DBENGINE:-sqlite}"
+                            DB_HOST="${PAPERLESS_DBHOST:-localhost}"
+
+                            if [ "$DB_ENGINE" = "postgresql" ]; then
+                                echo "Waiting for PostgreSQL to start..."
+                                while ! pg_isready -h "$DB_HOST" -p "${PAPERLESS_DBPORT:-5432}" --username "${PAPERLESS_DBUSER:-paperless}"; do
+                                    echo "Database is not ready yet. Retrying..."
+                                    sleep 3
+                                done
+                                echo "Connected to PostgreSQL"
+                            elif [ "$DB_ENGINE" = "mariadb" ]; then
+                                echo "Waiting for MariaDB to start..."
+                                while ! mariadb-admin --host="$DB_HOST" --port="${PAPERLESS_DBPORT:-3306}" --skip-ssl ping --silent >/dev/null 2>&1; do
+                                    echo "Database is not ready yet. Retrying..."
+                                    sleep 3
+                                done
+                                echo "Connected to MariaDB"
+                            fi
+
+                            echo "Waiting for Redis to start..."
+                            while ! wait-for-redis.py >/dev/null 2>&1; do
+                                echo "Redis is not ready yet. Retrying..."
+                                sleep 3
+                            done
+                            echo "Connected to Redis"
+
+                            echo "Running migrations..."
+                            python3 manage.py migrate
+                            echo "Migrations done"
+                    {{- if .Values.core.migrations.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.migrations.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    env: {{- include "paperless.baseEnv" . | nindent 24 }}
+                        {{- if .Values.core.migrations.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.migrations.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    resources: {{- toYaml .Values.core.migrations.resources | nindent 24 }}
+                    volumeMounts: {{- include "paperless.baseVolumeMounts" . | nindent 24 }}
+                        -   name: migrations-tmp
+                            mountPath: /tmp
+                        {{- if .Values.core.migrations.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.migrations.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+            containers:
+                -   name: {{ .Chart.Name }}-consumer
+                    image: {{ include "paperless.image" . | quote }}
+                    imagePullPolicy: {{ .Values.image.pullPolicy }}
+                    command:
+                        - python3
+                        - manage.py
+                        - document_consumer
+                    {{- if .Values.core.consumer.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.consumer.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    env: {{- include "paperless.baseEnv" . | nindent 24 }}
+                        -   name: PAPERLESS_CONSUMPTION_DIR
+                            value: {{ .Values.persistence.consume.mountPath | quote }}
+                        {{- if .Values.core.consumer.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.consumer.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    resources: {{- toYaml .Values.core.consumer.resources | nindent 24 }}
+                    volumeMounts: {{- include "paperless.baseVolumeMounts" . | nindent 24 }}
+                        -   name: consume
+                            mountPath: {{ .Values.persistence.consume.mountPath }}
+                            {{- if .Values.persistence.consume.subPath }}
+                            subPath: {{ .Values.persistence.consume.subPath }}
+                            {{- end }}
+                        -   name: consumer-tmp
+                            mountPath: /tmp
+                        {{- if .Values.core.consumer.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.consumer.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+                -   name: {{ .Chart.Name }}-scheduler
+                    image: {{ include "paperless.image" . | quote }}
+                    imagePullPolicy: {{ .Values.image.pullPolicy }}
+                    command:
+                        - celery
+                        - --app
+                        - paperless
+                        - beat
+                        - --loglevel
+                        - INFO
+                    {{- if .Values.core.scheduler.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.scheduler.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    env: {{- include "paperless.baseEnv" . | nindent 24 }}
+                        {{- if .Values.core.scheduler.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.scheduler.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    resources: {{- toYaml .Values.core.scheduler.resources | nindent 24 }}
+                    volumeMounts: {{- include "paperless.baseVolumeMounts" . | nindent 24 }}
+                        -   name: scheduler-tmp
+                            mountPath: /tmp
+                        {{- if .Values.core.scheduler.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.scheduler.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+                {{- if .Values.core.gotenberg.enabled }}
+                -   name: gotenberg
+                    image: {{ include "paperless.gotenbergImage" . | quote }}
+                    imagePullPolicy: {{ .Values.core.gotenberg.image.pullPolicy }}
+                    command:
+                        - gotenberg
+                        - "--chromium-disable-javascript=true"
+                        - "--chromium-allow-list=file:///tmp/.*"
+                        - "--api-port={{ .Values.core.gotenberg.service.port }}"
+                    {{- if .Values.core.gotenberg.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.gotenberg.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    ports:
+                        -   name: gotenberg-http
+                            containerPort: {{ .Values.core.gotenberg.service.port }}
+                            protocol: TCP
+                    {{- if .Values.core.gotenberg.extraEnvVars }}
+                    env: {{- include "common.tplvalues.render" (dict "value" .Values.core.gotenberg.extraEnvVars "context" $) | nindent 24 }}
+                    {{- end }}
+                    {{- if .Values.core.gotenberg.startupProbe.enabled }}
+                    startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.gotenberg.startupProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /health
+                            port: gotenberg-http
+                    {{- end }}
+                    {{- if .Values.core.gotenberg.livenessProbe.enabled }}
+                    livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.gotenberg.livenessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /health
+                            port: gotenberg-http
+                    {{- end }}
+                    {{- if .Values.core.gotenberg.readinessProbe.enabled }}
+                    readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.gotenberg.readinessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /health
+                            port: gotenberg-http
+                    {{- end }}
+                    resources: {{- toYaml .Values.core.gotenberg.resources | nindent 24 }}
+                    volumeMounts:
+                        -   name: gotenberg-tmp
+                            mountPath: /tmp
+                        {{- if .Values.core.gotenberg.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.gotenberg.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+                {{- end }}
+                {{- if .Values.core.tika.enabled }}
+                -   name: tika
+                    image: {{ include "paperless.tikaImage" . | quote }}
+                    ports:
+                        -   containerPort: {{ .Values.core.tika.service.port }}
+                            name: tika-http
+                    {{- if .Values.core.tika.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.tika.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    {{- if .Values.core.tika.extraEnvVars }}
+                    env: {{- include "common.tplvalues.render" (dict "value" .Values.core.tika.extraEnvVars "context" $) | nindent 24 }}
+                    {{- end }}
+                    {{- if .Values.core.tika.startupProbe.enabled }}
+                    startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.tika.startupProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: tika-http
+                    {{- end }}
+                    {{- if .Values.core.tika.livenessProbe.enabled }}
+                    livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.tika.livenessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: tika-http
+                    {{- end }}
+                    {{- if .Values.core.tika.readinessProbe.enabled }}
+                    readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.core.tika.readinessProbe "enabled") "context" $) | nindent 24 }}
+                        httpGet:
+                            path: /
+                            port: tika-http
+                    {{- end }}
+                    resources: {{- toYaml .Values.core.tika.resources | nindent 24 }}
+                    volumeMounts:
+                        -   name: tika-tmp
+                            mountPath: /tmp
+                        {{- if .Values.core.tika.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.tika.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+                {{- end }}
+            volumes: {{- include "paperless.volumes" (dict "volumes" (list "data" "consume") "context" $) | indent 16 }}
+                -   name: migrations-tmp
+                    emptyDir: { }
+                -   name: consumer-tmp
+                    emptyDir: { }
+                -   name: scheduler-tmp
+                    emptyDir: { }
+                -   name: gotenberg-tmp
+                    emptyDir: { }
+                -   name: tika-tmp
+                    emptyDir: { }
+                {{- if .Values.core.extraVolumes }}
+                {{- include "common.tplvalues.render" ( dict "value" .Values.core.extraVolumes "context" $ ) | nindent 16 }}
+                {{- end }}
+            {{- if .Values.core.affinity }}
+            affinity: {{- include "common.tplvalues.render" (dict "value" .Values.core.affinity "context" $) | nindent 16 }}
+            {{- end }}
+            {{- if .Values.core.nodeSelector }}
+            nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.core.nodeSelector "context" $) | nindent 16 }}
+            {{- end }}
+            {{- if .Values.core.tolerations }}
+            tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.core.tolerations "context" $) | nindent 16 }}
+            {{- end }}

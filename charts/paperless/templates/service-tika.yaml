@@ -1,0 +1,27 @@
+{{- if .Values.core.tika.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+    name: {{ include "paperless.tikaServiceName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    {{- $labels := .Values.commonLabels }}
+    {{- if .Values.core.tika.service.labels }}
+    {{- $labels = include "common.tplvalues.merge" ( dict "values" ( list .Values.core.tika.service.labels $labels ) "context" . ) }}
+    {{- end }}
+    labels: {{- include "common.labels.standard" ( dict "customLabels" $labels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: core
+    {{- if or .Values.commonAnnotations .Values.core.tika.service.annotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.core.tika.service.annotations .Values.commonAnnotations ) "context" . ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 4 }}
+    {{- end }}
+spec:
+    type: {{ .Values.core.tika.service.type }}
+    ports:
+        -   name: http
+            targetPort: tika-http
+            protocol: TCP
+            port: {{ .Values.core.tika.service.port }}
+    {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.core.podLabels .Values.commonLabels ) "context" . ) }}
+    selector: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: core
+{{- end }}

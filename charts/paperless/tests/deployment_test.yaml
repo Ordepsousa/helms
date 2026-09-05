@@ -1,0 +1,177 @@
+suite: paperless chart functionality
+templates:
+    - templates/deployment-core.yaml
+    - templates/deployment-webserver.yaml
+    - templates/deployment-worker.yaml
+    - templates/ingress.yaml
+    - templates/http-route.yaml
+    - templates/secret-key.yaml
+    - templates/service-webserver.yaml
+    - templates/job-apitoken-generator.yaml
+tests:
+    -   it: keeps core singleton with recreate strategy
+        template: templates/deployment-core.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   equal:
+                    path: spec.replicas
+                    value: 1
+            -   equal:
+                    path: spec.strategy.type
+                    value: Recreate
+
+    -   it: uses the webserver replica and strategy settings
+        template: templates/deployment-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+            webserver.replicaCount: 3
+            webserver.strategy.type: RollingUpdate
+        asserts:
+            -   equal:
+                    path: spec.replicas
+                    value: 3
+            -   equal:
+                    path: spec.strategy.type
+                    value: RollingUpdate
+
+    -   it: uses the worker replica and strategy settings
+        template: templates/deployment-worker.yaml
+        set:
+            config.secretKey: unit-test-secret
+            worker.replicaCount: 4
+            worker.strategy.type: Recreate
+        asserts:
+            -   equal:
+                    path: spec.replicas
+                    value: 4
+            -   equal:
+                    path: spec.strategy.type
+                    value: Recreate
+
+    -   it: applies restricted pod and container security settings to core
+        template: templates/deployment-core.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   equal:
+                    path: spec.template.spec.securityContext.fsGroupChangePolicy
+                    value: OnRootMismatch
+            -   equal:
+                    path: spec.template.spec.securityContext.fsGroup
+                    value: 1000
+
+    -   it: creates an ingress and routes it to the webserver service
+        template: templates/ingress.yaml
+        set:
+            config.secretKey: unit-test-secret
+            ingress.enabled: true
+            ingress.ingressClassName: nginx
+            ingress.hostname: paperless.example.com
+            httproute.enabled: false
+        asserts:
+            -   isKind:
+                    of: Ingress
+            -   equal:
+                    path: spec.ingressClassName
+                    value: nginx
+            -   equal:
+                    path: spec.rules[0].host
+                    value: paperless.example.com
+            -   equal:
+                    path: spec.rules[0].http.paths[0].backend.service.name
+                    value: release-name-paperless-webserver
+
+    -   it: does not create ingress when httproute is enabled
+        template: templates/ingress.yaml
+        set:
+            config.secretKey: unit-test-secret
+            ingress.enabled: true
+            httproute.enabled: true
+        asserts:
+            -   hasDocuments:
+                    count: 0
+
+    -   it: creates an httproute with the configured parent and hostname
+        template: templates/http-route.yaml
+        set:
+            config.secretKey: unit-test-secret
+            httproute.enabled: true
+            httproute.parentRefs[0].name: public-gateway
+            httproute.hostnames[0]: paperless.example.com
+        asserts:
+            -   isKind:
+                    of: HTTPRoute
+            -   equal:
+                    path: spec.parentRefs[0].name
+                    value: public-gateway
+            -   equal:
+                    path: spec.hostnames[0]
+                    value: paperless.example.com
+            -   equal:
+                    path: spec.rules[0].backendRefs[0].name
+                    value: release-name-paperless-webserver
+
+    -   it: creates the generated secret with the supplied key
+        template: templates/secret-key.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   isKind:
+                    of: Secret
+            -   equal:
+                    path: stringData.secretKey
+                    value: unit-test-secret
+
+    -   it: skips the generated secret when an existing secret is configured
+        template: templates/secret-key.yaml
+        set:
+            config.existingSecret: paperless-config
+        asserts:
+            -   hasDocuments:
+                    count: 0
+
+    -   it: creates the API token hook with restricted security settings
+        template: templates/job-apitoken-generator.yaml
+        set:
+            config.secretKey: unit-test-secret
+            apiTokenJob.create: true
+            config.createUser: true
+        asserts:
+            -   isKind:
+                    of: Job
+            -   equal:
+                    path: metadata.annotations["helm.sh/hook"]
+                    value: post-install, post-upgrade
+            -   equal:
+                    path: spec.template.spec.securityContext.fsGroupChangePolicy
+                    value: OnRootMismatch
+            -   equal:
+                    path: spec.template.spec.securityContext.fsGroup
+                    value: 1000
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.runAsUser
+                    value: 1000
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.runAsGroup
+                    value: 1000
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+                    value: true
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+                    value: false
+
+    -   it: selects the webserver service with component labels
+        template: templates/service-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   isKind:
+                    of: Service
+            -   equal:
+                    path: spec.selector["app.kubernetes.io/component"]
+                    value: webserver
+            -   equal:
+                    path: spec.ports[0].port
+                    value: 80

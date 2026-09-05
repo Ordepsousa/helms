@@ -1,0 +1,50 @@
+{{- if and .Values.apiTokenJob.create (or .Values.config.createUser .Values.config.existingCredentialsSecret) }}
+{{- if .Values.apiTokenJob.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: {{ include "paperless.apiTokenServiceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: apiToken
+    {{- if or .Values.apiTokenJob.serviceAccount.annotations .Values.commonAnnotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list .Values.apiTokenJob.serviceAccount.annotations .Values.commonAnnotations ) "context" . ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+    {{- end }}
+automountServiceAccountToken: {{ .Values.apiTokenJob.serviceAccount.automount }}
+---
+{{- end }}
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" .}}
+kind: Role
+metadata:
+    name: {{ include "paperless.apiTokenServiceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: apiToken
+    {{- if .Values.commonAnnotations }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+    {{- end }}
+rules:
+    -   apiGroups: [ "" ]
+        resources: [ "secrets" ]
+        verbs: [ "get", "list", "create", "update", "patch" ]
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" .}}
+kind: RoleBinding
+metadata:
+    name: {{ include "paperless.apiTokenServiceAccountName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: apiToken
+    {{- if .Values.commonAnnotations }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+    {{- end }}
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: {{ include "paperless.apiTokenServiceAccountName" . }}
+subjects:
+    -   kind: ServiceAccount
+        name: {{ include "paperless.apiTokenServiceAccountName" . }}
+        namespace: {{ include "common.names.namespace" . | quote }}
+{{- end }}

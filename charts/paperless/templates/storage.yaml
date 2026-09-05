@@ -1,0 +1,65 @@
+{{- range $volumeName := (list "data" "media" "consume") }}
+{{- $volume := index $.Values.persistence $volumeName }}
+{{- if and $volume.enabled (not $volume.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: {{ $volume.volumeName }}
+    namespace: {{ include "common.names.namespace" $ | quote }}
+    {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list $volume.labels $.Values.commonLabels ) "context" . ) }}
+    {{- if $labels }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" $) | nindent 8 }}
+    {{- end }}
+    {{- if or $.Values.commonAnnotations $volume.annotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list $volume.annotations $.Values.commonAnnotations ) "context" $ ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+    {{- end }}
+spec:
+    {{- with $volume.accessModes }}
+    accessModes:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if $volume.dataSource }}
+    dataSource: {{- include "common.tplvalues.render" (dict "value" $volume.dataSource "context" $) | nindent 8 }}
+    {{- end }}
+    resources:
+        requests:
+            storage: {{ $volume.size | quote }}
+    {{- if and $volume.nfs $volume.nfs.server }}
+    volumeName: {{ $volumeName }}
+    {{- else }}
+    {{- include "common.storage.class" (dict "persistence" $volume "global" $.Values.global) | nindent 4 }}
+    {{- end }}
+    {{- if $volume.selector }}
+    selector: {{- include "common.tplvalues.render" (dict "value" $volume.selector "context" $) | nindent 8 }}
+    {{- end }}
+{{- if and $volume.nfs $volume.nfs.server }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    name: {{ $volumeName }}
+    namespace: {{ include "common.names.namespace" $ | quote }}
+    {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list $volume.labels $.Values.commonLabels ) "context" $ ) }}
+    {{- if $labels }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" $) | nindent 8 }}
+    {{- end }}
+    {{- if or $.Values.commonAnnotations $volume.annotations }}
+    {{- $annotations := include "common.tplvalues.merge" ( dict "values" ( list $volume.annotations $.Values.commonAnnotations ) "context" $ ) }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" $annotations "context" $) | nindent 8 }}
+    {{- end }}
+spec:
+    capacity:
+        storage: {{ $volume.size | quote }}
+    accessModes:
+        {{- with $volume.accessModes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    persistentVolumeReclaimPolicy: Retain
+    nfs:
+        server: {{ $volume.nfs.server | quote }}
+        path: {{ $volume.nfs.path | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,1519 @@
+## @section Global parameters
+## Please, note that this will override the parameters, including dependencies, configured to use the global value
+##
+global:
+    ## @param global.imagePullSecrets Global Docker registry secret names as an array
+    ## e.g.
+    ## imagePullSecrets:
+    ##   - myRegistryKeySecretName
+    ##
+    imagePullSecrets: [ ]
+    ## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+    ##
+    defaultStorageClass: ""
+## @param nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
+nameOverride: ""
+## @param fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
+## @param commonLabels Add labels to all the deployed resources
+##
+commonLabels: { }
+## @param commonAnnotations Add annotations to all the deployed resources
+##
+commonAnnotations: { }
+## @param secretAnnotations Add annotations to the secrets
+##
+secretAnnotations: { }
+## Service account shared by the all Pods.
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+##
+serviceAccount:
+    ## @param serviceAccount.create Enable creation of ServiceAccount
+    ##
+    create: true
+    ## @param serviceAccount.name The name of the ServiceAccount to use.
+    ## If not set and create is true, a name is generated using the common.names.fullname template
+    ##
+    name: ""
+    ## @param serviceAccount.automount Allows auto mount of ServiceAccountToken on the serviceAccount created
+    ## Can be set to false if pods using this serviceAccount do not need to use K8s API
+    ##
+    automount: false
+    ## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
+    ##
+    annotations: { }
+## paperless-ngx image version
+## @param image.registry paperless-ngx image registry
+## @param image.repository paperless-ngx image repository
+## @skip image.tag paperless-ngx image tag (immutable tags are recommended)
+## @param image.digest paperless-ngx image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+## @param image.pullPolicy paperless-ngx image pull policy
+## @param image.pullSecrets Specify image pull secrets
+## @param image.debug Specify if debug values should be set
+##
+image:
+    registry: ghcr.io
+    repository: paperless-ngx/paperless-ngx
+    tag: latest
+    digest: ""
+    ## Specify a imagePullPolicy
+    ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+    ##
+    pullPolicy: IfNotPresent
+    ## Optionally specify an array of imagePullSecrets.
+    ## Secrets must be manually created in the namespace.
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    ## e.g:
+    ## pullSecrets:
+    ##   - myRegistryKeySecretName
+    ##
+    pullSecrets: [ ]
+    ## Set to true if you would like to see extra information on logs
+    ##
+    debug: false
+## @section config parameters
+##
+config:
+    ## @param config.domain Url where paperless is reachable via browser (including http(s)://)
+    ##
+    domain: "https://paperless.domain"
+    ## paperless OCR configuration
+    ## @param config.ocr.installLanguages Array of languages to be installed for ocr
+    ## @param config.ocr.languages Array of languages to be used for ocr
+    ocr:
+        installLanguages:
+            - eng
+        languages:
+            - eng
+    ## @param config.secretKey required secret key - PAPERLESS_SECRET_KEY
+    ## example generation: openssl rand -base64 32
+    ##
+    secretKey: ""
+    ## @param config.existingSecret Existing Secret containing the secretKey. Preferred in production
+    ##
+    existingSecret: ""
+    ## @param config.createUser Create the paperless admin user
+    ##
+    createUser: false
+    ## @param config.existingCredentialsSecret Existing Secret containing credentials.
+    ##
+    existingCredentialsSecret: ""
+    ## @param config.credentials Credentials used only when existingCredentialsSecret is empty. Prefer an external Secret in production
+    ##
+    credentials:
+        mail: ""
+        name: ""
+        password: ""
+    ## Redis-compatible broker selection and external connection settings
+    ## Works with Redis, Valkey, Dragonfly, or any Redis-compatible broker
+    ## @param config.redis.external.host External broker hostname. Empty allows bundled broker resolution
+    ## @param config.redis.external.port External broker port
+    ## @param config.redis.external.username External broker username
+    ## @param config.redis.external.password External broker password. Ignored when existingSecret is set
+    ## @param config.redis.external.existingSecret Existing Secret containing the external broker password
+    ## @param config.redis.external.index External broker database index
+    ##
+    redis:
+        external:
+            host: ""
+            port: 6379
+            username: ""
+            password: ""
+            existingSecret: ""
+            index: "0"
+    ## Database selection and external database connection settings
+    ## @param config.database.mode Store mode: auto, sqlite, postgresql or external. Auto selects external configuration, then bundled PostgreSQL, then SQLite
+    ## @param config.database.external.engine External engine: postgres or mysql.
+    ## @param config.database.external.host External database hostname. Empty allows bundled PostgreSQL resolution
+    ## @param config.database.external.port External database port
+    ## @param config.database.external.name External database name
+    ## @param config.database.external.username External database username
+    ## @param config.database.external.password External database password. Ignored when existingSecret is set
+    ## @param config.database.external.existingSecret Existing Secret containing the external database password
+    ## @param config.database.external.existingSecretPasswordKey Key in existingSecret containing the password
+    ##
+    database:
+        mode: auto
+        external:
+            engine: postgres
+            host: ""
+            port: 5432
+            name: paperless
+            username: paperless
+            password: ""
+            existingSecret: ""
+            existingSecretPasswordKey: database-password
+## @section core parameters
+##
+core:
+    ## @param core.labels Map of labels to add to core deployment
+    ##
+    labels: { }
+    ## @param core.annotations Annotations for core pods
+    ##
+    annotations: { }
+    ## @param core.podLabels Map of labels to add to core pods
+    ##
+    podLabels: { }
+    ## @param core.podAnnotations Map of annotations to add to core pods
+    ##
+    podAnnotations: { }
+    ## Pod Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param core.podSecurityContext.enabled Enable security context
+    ## @param core.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ## @param core.podSecurityContext.fsGroup Group ID for the pod
+    ##
+    podSecurityContext:
+        enabled: true
+        fsGroupChangePolicy: OnRootMismatch
+        fsGroup: 1000
+    ## @param core.affinity Affinity for core pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    ## Note: core.podAffinityPreset, core.podAntiAffinityPreset, and core.nodeAffinityPreset will be ignored when it's set
+    ##
+    affinity: { }
+    ## @param core.nodeSelector Node labels for core pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    ##
+    nodeSelector: { }
+    ## @param core.tolerations Tolerations for core pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+    ##
+    tolerations: [ ]
+    ## @param core.extraVolumes Optionally specify extra list of additional volumes for the core containers
+    ##
+    extraVolumes: [ ]
+    migrations:
+        ## @param core.migrations.extraEnvVars Array with extra environment variables to add to migrations initContainer
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## @param core.migrations.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param core.migrations.containerSecurityContext.enabled Enabled containers' Security Context
+        ## @param core.migrations.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param core.migrations.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+        ## @param core.migrations.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+        ## @param core.migrations.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param core.migrations.containerSecurityContext.privileged Set container's Security Context privileged
+        ## @param core.migrations.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param core.migrations.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param core.migrations.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+        ## @param core.migrations.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param core.migrations.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the migrations initContainer
+        ##
+        extraVolumeMounts: [ ]
+    consumer:
+        ## @param core.consumer.extraEnvVars Array with extra environment variables to add to consumer container
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## @param core.consumer.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param core.consumer.containerSecurityContext.enabled Enabled containers' Security Context
+        ## @param core.consumer.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param core.consumer.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+        ## @param core.consumer.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+        ## @param core.consumer.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param core.consumer.containerSecurityContext.privileged Set container's Security Context privileged
+        ## @param core.consumer.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param core.consumer.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param core.consumer.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+        ## @param core.consumer.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param core.consumer.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the consumer container
+        ##
+        extraVolumeMounts: [ ]
+    scheduler:
+        ## @param core.scheduler.extraEnvVars Array with extra environment variables to add to scheduler container
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## @param core.scheduler.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param core.scheduler.enabled Enabled containers' Security Context
+        ## @param core.scheduler.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param core.scheduler.runAsUser Set containers' Security Context runAsUser
+        ## @param core.scheduler.runAsGroup Set containers' Security Context runAsGroup
+        ## @param core.scheduler.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param core.scheduler.privileged Set container's Security Context privileged
+        ## @param core.scheduler.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param core.scheduler.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param core.scheduler.capabilities.drop List of capabilities to be dropped
+        ## @param core.scheduler.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param core.scheduler.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the scheduler container
+        ##
+        extraVolumeMounts: [ ]
+    tika:
+        ## @param core.tika.enabled Enable Apache Tika service
+        enabled: true
+        ## tika image version
+        ## @param core.tika.image.registry tika image registry
+        ## @param core.tika.image.repository tika image repository
+        ## @skip core.tika..imagetag tika image tag (immutable tags are recommended)
+        ## @param core.tika.image.digest tika image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+        ## @param core.tika.image.pullPolicy tika image pull policy
+        ## @param core.tika.image.pullSecrets Specify image pull secrets
+        ## @param core.tika.image.debug Specify if debug values should be set
+        ##
+        image:
+            registry: docker.io
+            repository: apache/tika
+            tag: "3.3.0.0-full"
+            digest: ""
+            ## Specify a imagePullPolicy
+            ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+            ##
+            pullPolicy: IfNotPresent
+            ## Optionally specify an array of imagePullSecrets.
+            ## Secrets must be manually created in the namespace.
+            ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+            ## e.g:
+            ## pullSecrets:
+            ##   - myRegistryKeySecretName
+            ##
+            pullSecrets: [ ]
+            ## Enable debug mode
+            ##
+            debug: false
+        ## tika service configuration
+        ##
+        service:
+            ## @param core.tika.service.type Kubernetes Service type
+            ##
+            type: ClusterIP
+            ## @param core.tika.service.port tika service port
+            ##
+            port: 9998
+            ## @param core.tika.service.labels Map of labels to add to the tika service
+            ##
+            labels: { }
+            ## @param core.tika.service.annotations Annotations for tika service
+            ##
+            annotations: { }
+        ## @param core.tika.extraEnvVars Array with extra environment variables to add to tika container
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## Configure extra options for tika container liveness, readiness and startup probes
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+        ## @param core.tika.livenessProbe.enabled Enable livenessProbe on tika container
+        ## @param core.tika.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+        ## @param core.tika.livenessProbe.periodSeconds Period seconds for livenessProbe
+        ## @param core.tika.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+        ## @param core.tika.livenessProbe.failureThreshold Failure threshold for livenessProbe
+        ## @param core.tika.livenessProbe.successThreshold Success threshold for livenessProbe
+        ##
+        livenessProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.tika.readinessProbe.enabled Enable readinessProbe on tika container
+        ## @param core.tika.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+        ## @param core.tika.readinessProbe.periodSeconds Period seconds for readinessProbe
+        ## @param core.tika.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+        ## @param core.tika.readinessProbe.failureThreshold Failure threshold for readinessProbe
+        ## @param core.tika.readinessProbe.successThreshold Success threshold for readinessProbe
+        ##
+        readinessProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.tika.startupProbe.enabled Enable startupProbe on tika container
+        ## @param core.tika.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+        ## @param core.tika.startupProbe.periodSeconds Period seconds for startupProbe
+        ## @param core.tika.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+        ## @param core.tika.startupProbe.failureThreshold Failure threshold for startupProbe
+        ## @param core.tika.startupProbe.successThreshold Success threshold for startupProbe
+        ##
+        startupProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.tika.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param tika.containerSecurityContext.enabled Enabled containers' Security Context
+        ## @param tika.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param tika.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+        ## @param tika.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+        ## @param tika.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param tika.containerSecurityContext.privileged Set container's Security Context privileged
+        ## @param tika.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param tika.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param tika.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+        ## @param tika.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param tika.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the tika container
+        ##
+        extraVolumeMounts: [ ]
+    gotenberg:
+        ## @param core.gotenberg.enabled Enable gotenberg service
+        enabled: true
+        ## gotenberg image version
+        ## @param core.gotenberg.image.registry gotenberg image registry
+        ## @param core.gotenberg.image.repository gotenberg image repository
+        ## @skip core.gotenberg.image.tag gotenberg image tag (immutable tags are recommended)
+        ## @param core.gotenberg.image.digest gotenberg image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+        ## @param core.gotenberg.image.pullPolicy gotenberg image pull policy
+        ## @param core.gotenberg.image.pullSecrets Specify image pull secrets
+        ## @param core.gotenberg.image.debug Specify if debug values should be set
+        ##
+        image:
+            registry: docker.io
+            repository: gotenberg/gotenberg
+            tag: "8.36.0"
+            digest: ""
+            ## Specify a imagePullPolicy
+            ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+            ##
+            pullPolicy: IfNotPresent
+            ## Optionally specify an array of imagePullSecrets.
+            ## Secrets must be manually created in the namespace.
+            ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+            ## e.g:
+            ## pullSecrets:
+            ##   - myRegistryKeySecretName
+            ##
+            pullSecrets: [ ]
+            ## Enable debug mode
+            ##
+            debug: false
+        ## gotenberg service configuration
+        ##
+        service:
+            ## @param core.gotenberg.service.type Kubernetes Service type
+            ##
+            type: ClusterIP
+            ## @param core.gotenberg.service.port gotenberg service port
+            ##
+            port: 3030
+            ## @param core.gotenberg.service.labels Map of labels to add to the gotenberg service
+            ##
+            labels: { }
+            ## @param core.gotenberg.service.annotations Annotations for gotenberg service
+            ##
+            annotations: { }
+        ## @param core.gotenberg.extraEnvVars Array with extra environment variables to add to gotenberg container
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## Configure extra options for gotenberg container liveness, readiness and startup probes
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+        ## @param core.gotenberg.livenessProbe.enabled Enable livenessProbe on gotenberg container
+        ## @param core.gotenberg.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+        ## @param core.gotenberg.livenessProbe.periodSeconds Period seconds for livenessProbe
+        ## @param core.gotenberg.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+        ## @param core.gotenberg.livenessProbe.failureThreshold Failure threshold for livenessProbe
+        ## @param core.gotenberg.livenessProbe.successThreshold Success threshold for livenessProbe
+        ##
+        livenessProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.gotenberg.readinessProbe.enabled Enable readinessProbe on gotenberg container
+        ## @param core.gotenberg.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+        ## @param core.gotenberg.readinessProbe.periodSeconds Period seconds for readinessProbe
+        ## @param core.gotenberg.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+        ## @param core.gotenberg.readinessProbe.failureThreshold Failure threshold for readinessProbe
+        ## @param core.gotenberg.readinessProbe.successThreshold Success threshold for readinessProbe
+        ##
+        readinessProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.gotenberg.startupProbe.enabled Enable startupProbe on gotenberg container
+        ## @param core.gotenberg.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+        ## @param core.gotenberg.startupProbe.periodSeconds Period seconds for startupProbe
+        ## @param core.gotenberg.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+        ## @param core.gotenberg.startupProbe.failureThreshold Failure threshold for startupProbe
+        ## @param core.gotenberg.startupProbe.successThreshold Success threshold for startupProbe
+        ##
+        startupProbe:
+            enabled: true
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 30
+            failureThreshold: 20
+            successThreshold: 1
+        ## @param core.gotenberg.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param gotenberg.containerSecurityContext.enabled Enabled containers' Security Context
+        ## @param gotenberg.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param gotenberg.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+        ## @param gotenberg.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+        ## @param gotenberg.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param gotenberg.containerSecurityContext.privileged Set container's Security Context privileged
+        ## @param gotenberg.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param gotenberg.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param gotenberg.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+        ## @param gotenberg.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param gotenberg.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the gotenberg container
+        ##
+        extraVolumeMounts: [ ]
+## @section webserver parameters
+##
+webserver:
+    ## @param webserver.labels Map of labels to add to webserver deployment
+    ##
+    labels: { }
+    ## @param webserver.annotations Annotations for webserver pod
+    ##
+    annotations: { }
+    ## @param webserver.podLabels Map of labels to add to webserver pod
+    ##
+    podLabels: { }
+    ## @param webserver.podAnnotations Map of annotations to add to webserver pod
+    ##
+    podAnnotations: { }
+    ## @param webserver.replicaCount Number of webserver replicas
+    ##
+    replicaCount: 1
+    ## webserver deployment strategy
+    ## @param webserver.strategy.type webserver strategy type or if using SQLite database it uses Recreate update to avoid overlapping volume mounts
+    ##
+    strategy:
+        type: RollingUpdate
+    ## webserver service configuration
+    ##
+    service:
+        ## @param webserver.service.type Kubernetes Service type
+        ##
+        type: ClusterIP
+        ## @param webserver.service.port webserver service port
+        ##
+        port: 80
+        ## @param webserver.service.labels Map of labels to add to the webserver service
+        ##
+        labels: { }
+        ## @param webserver.service.annotations Annotations for webserver service
+        ##
+        annotations: { }
+    ## @param webserver.extraEnvVars Array with extra environment variables to add to webserver container
+    ## e.g:
+    ## extraEnvVars:
+    ##   - name: FOO
+    ##     value: "bar"
+    ##
+    extraEnvVars: [ ]
+    ## Configure extra options for webserver container liveness, readiness and startup probes
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+    ## @param webserver.livenessProbe.enabled Enable livenessProbe on webserver container
+    ## @param webserver.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+    ## @param webserver.livenessProbe.periodSeconds Period seconds for livenessProbe
+    ## @param webserver.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+    ## @param webserver.livenessProbe.failureThreshold Failure threshold for livenessProbe
+    ## @param webserver.livenessProbe.successThreshold Success threshold for livenessProbe
+    ##
+    livenessProbe:
+        enabled: true
+        initialDelaySeconds: 0
+        periodSeconds: 30
+        timeoutSeconds: 1
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param webserver.readinessProbe.enabled Enable readinessProbe on webserver container
+    ## @param webserver.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+    ## @param webserver.readinessProbe.periodSeconds Period seconds for readinessProbe
+    ## @param webserver.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+    ## @param webserver.readinessProbe.failureThreshold Failure threshold for readinessProbe
+    ## @param webserver.readinessProbe.successThreshold Success threshold for readinessProbe
+    ##
+    readinessProbe:
+        enabled: true
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 1
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param webserver.startupProbe.enabled Enable startupProbe on webserver container
+    ## @param webserver.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+    ## @param webserver.startupProbe.periodSeconds Period seconds for startupProbe
+    ## @param webserver.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+    ## @param webserver.startupProbe.failureThreshold Failure threshold for startupProbe
+    ## @param webserver.startupProbe.successThreshold Success threshold for startupProbe
+    ##
+    startupProbe:
+        enabled: true
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 1
+        failureThreshold: 15
+        successThreshold: 1
+    ## @param webserver.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+    ## Example:
+    ## resources:
+    ##   requests:
+    ##     cpu: 2
+    ##     memory: 512Mi
+    ##   limits:
+    ##     cpu: 3
+    ##     memory: 1024Mi
+    ##
+    resources: { }
+    ## Pod Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param webserver.podSecurityContext.enabled Enable security context
+    ## @param webserver.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ## @param webserver.podSecurityContext.fsGroup Group ID for the pod
+    ##
+    podSecurityContext:
+        enabled: true
+        fsGroupChangePolicy: OnRootMismatch
+        fsGroup: 1000
+    ## Container Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param webserver.containerSecurityContext.enabled Enabled containers' Security Context
+    ## @param webserver.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+    ## @param webserver.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ## @param webserver.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ## @param webserver.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+    ## @param webserver.containerSecurityContext.privileged Set container's Security Context privileged
+    ## @param webserver.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+    ## @param webserver.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+    ## @param webserver.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+    ## @param webserver.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+    ##
+    containerSecurityContext:
+        enabled: true
+        seLinuxOptions: { }
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        privileged: false
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop: [ "ALL" ]
+        seccompProfile:
+            type: "RuntimeDefault"
+    ## @param webserver.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the webserver container
+    ##
+    extraVolumeMounts: [ ]
+    ## @param webserver.extraVolumes Optionally specify extra list of additional volumes for the webserver container
+    ##
+    extraVolumes: [ ]
+    ## @param webserver.affinity Affinity for webserver pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    ## Note: webserver.podAffinityPreset, webserver.podAntiAffinityPreset, and webserver.nodeAffinityPreset will be ignored when it's set
+    ##
+    affinity: { }
+    ## @param webserver.nodeSelector Node labels for webserver pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    ##
+    nodeSelector: { }
+    ## @param webserver.tolerations Tolerations for webserver pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+    ##
+    tolerations: [ ]
+## @section worker parameters
+##
+worker:
+    ## @param worker.labels Map of labels to add to worker deployment
+    ##
+    labels: { }
+    ## @param worker.annotations Annotations for worker pod
+    ##
+    annotations: { }
+    ## @param worker.podLabels Map of labels to add to worker pod
+    ##
+    podLabels: { }
+    ## @param worker.podAnnotations Map of annotations to add to worker pod
+    ##
+    podAnnotations: { }
+    ## @param worker.replicaCount Number of worker replicas
+    ##
+    replicaCount: 1
+    ## worker deployment strategy
+    ## @param worker.strategy.type worker strategy type or if using SQLite database it uses Recreate update to avoid overlapping volume mounts
+    ##
+    strategy:
+        type: RollingUpdate
+    ## @param worker.extraEnvVars Array with extra environment variables to add to worker container
+    ## e.g:
+    ## extraEnvVars:
+    ##   - name: FOO
+    ##     value: "bar"
+    ##
+    extraEnvVars: [ ]
+    ## @param worker.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+    ## Example:
+    ## resources:
+    ##   requests:
+    ##     cpu: 2
+    ##     memory: 512Mi
+    ##   limits:
+    ##     cpu: 3
+    ##     memory: 1024Mi
+    ##
+    resources: { }
+    ## Pod Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param worker.podSecurityContext.enabled Enable security context
+    ## @param worker.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ## @param worker.podSecurityContext.fsGroup Group ID for the pod
+    ##
+    podSecurityContext:
+        enabled: true
+        fsGroupChangePolicy: OnRootMismatch
+        fsGroup: 1000
+    ## Container Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param worker.containerSecurityContext.enabled Enabled containers' Security Context
+    ## @param worker.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+    ## @param worker.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ## @param worker.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ## @param worker.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+    ## @param worker.containerSecurityContext.privileged Set container's Security Context privileged
+    ## @param worker.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+    ## @param worker.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+    ## @param worker.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+    ## @param worker.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+    ##
+    containerSecurityContext:
+        enabled: true
+        seLinuxOptions: { }
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        privileged: false
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop: [ "ALL" ]
+        seccompProfile:
+            type: "RuntimeDefault"
+    ## @param worker.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the worker container
+    ##
+    extraVolumeMounts: [ ]
+    ## @param worker.extraVolumes Optionally specify extra list of additional volumes for the worker container
+    ##
+    extraVolumes: [ ]
+    ## @param worker.affinity Affinity for worker pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    ## Note: worker.podAffinityPreset, worker.podAntiAffinityPreset, and worker.nodeAffinityPreset will be ignored when it's set
+    ##
+    affinity: { }
+    ## @param worker.nodeSelector Node labels for worker pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    ##
+    nodeSelector: { }
+    ## @param worker.tolerations Tolerations for worker pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+    ##
+    tolerations: [ ]
+    fetchOcr:
+        ## @param worker.fetchOcr.extraEnvVars Array with extra environment variables to add to fetch-ocr initContainer
+        ## e.g:
+        ## extraEnvVars:
+        ##   - name: FOO
+        ##     value: "bar"
+        ##
+        extraEnvVars: [ ]
+        ## @param worker.fetchOcr.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+        ## Example:
+        ## resources:
+        ##   requests:
+        ##     cpu: 2
+        ##     memory: 512Mi
+        ##   limits:
+        ##     cpu: 3
+        ##     memory: 1024Mi
+        ##
+        resources: { }
+        ## Container Security Context
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+        ## @param worker.fetchOcr.containerSecurityContext.enabled Enabled containers' Security Context
+        ## @param worker.fetchOcr.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+        ## @param worker.fetchOcr.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+        ## @param worker.fetchOcr.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+        ## @param worker.fetchOcr.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+        ## @param worker.fetchOcr.containerSecurityContext.privileged Set container's Security Context privileged
+        ## @param worker.fetchOcr.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+        ## @param worker.fetchOcr.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+        ## @param worker.fetchOcr.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+        ## @param worker.fetchOcr.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+        ##
+        containerSecurityContext:
+            enabled: true
+            seLinuxOptions: { }
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop: [ "ALL" ]
+            seccompProfile:
+                type: "RuntimeDefault"
+        ## @param worker.fetchOrc.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the fetch-ocr initContainer
+        ##
+        extraVolumeMounts: [ ]
+## @section waitForCore initContainer parameters
+##
+waitForCore:
+    ## @param waitForCore.extraEnvVars Array with extra environment variables to add to wait-for-core initContainer
+    ## e.g:
+    ## extraEnvVars:
+    ##   - name: FOO
+    ##     value: "bar"
+    ##
+    extraEnvVars: [ ]
+    ## Configure extra options for wait-for-core iniContainer liveness, readiness and startup probes
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+    ## @param waitForCore.livenessProbe.enabled Enable livenessProbe on waitForCore initContainer
+    ## @param waitForCore.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+    ## @param waitForCore.livenessProbe.periodSeconds Period seconds for livenessProbe
+    ## @param waitForCore.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+    ## @param waitForCore.livenessProbe.failureThreshold Failure threshold for livenessProbe
+    ## @param waitForCore.livenessProbe.successThreshold Success threshold for livenessProbe
+    ##
+    livenessProbe:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param waitForCore.readinessProbe.enabled Enable readinessProbe on waitForCore initContainer
+    ## @param waitForCore.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+    ## @param waitForCore.readinessProbe.periodSeconds Period seconds for readinessProbe
+    ## @param waitForCore.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+    ## @param waitForCore.readinessProbe.failureThreshold Failure threshold for readinessProbe
+    ## @param waitForCore.readinessProbe.successThreshold Success threshold for readinessProbe
+    ##
+    readinessProbe:
+        enabled: true
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param waitForCore.startupProbe.enabled Enable startupProbe on waitForCore initContainer
+    ## @param waitForCore.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+    ## @param waitForCore.startupProbe.periodSeconds Period seconds for startupProbe
+    ## @param waitForCore.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+    ## @param waitForCore.startupProbe.failureThreshold Failure threshold for startupProbe
+    ## @param waitForCore.startupProbe.successThreshold Success threshold for startupProbe
+    ##
+    startupProbe:
+        enabled: false
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 1
+        failureThreshold: 15
+        successThreshold: 1
+    ## @param waitForCore.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+    ## Example:
+    ## resources:
+    ##   requests:
+    ##     cpu: 2
+    ##     memory: 512Mi
+    ##   limits:
+    ##     cpu: 3
+    ##     memory: 1024Mi
+    ##
+    resources: { }
+    ## Container Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param waitForCore.containerSecurityContext.enabled Enabled containers' Security Context
+    ## @param waitForCore.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+    ## @param waitForCore.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ## @param waitForCore.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ## @param waitForCore.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+    ## @param waitForCore.containerSecurityContext.privileged Set container's Security Context privileged
+    ## @param waitForCore.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+    ## @param waitForCore.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+    ## @param waitForCore.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+    ## @param waitForCore.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+    ##
+    containerSecurityContext:
+        enabled: true
+        seLinuxOptions: { }
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        privileged: false
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop: [ "ALL" ]
+        seccompProfile:
+            type: "RuntimeDefault"
+    ## @param waitForCore.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the wait-for-core initContainer
+    ##
+    extraVolumeMounts: [ ]
+## @section apiTokenJob parameters
+## Optional personal API token creation Job
+##
+apiTokenJob:
+    ## @param apiTokenJob.create whether to enable the creation of an api token
+    ## Generate and persist a personal API token. Must be true with createUser or existingCredentialsSecret should be provided for the Job to run.
+    ##
+    create: false
+    ## @param apiTokenJob.apiKeySecretName Secret name receiving the generated token. Empty uses <fullname>-token-secret
+    ##
+    apiKeySecretName: ""
+    ## @param apiTokenJob.backoffLimit Maximum Job retries
+    ##
+    backoffLimit: 5
+    ## @param apiTokenJob.labels Map of labels to add to apiToken job
+    ##
+    labels: { }
+    ## @param apiTokenJob.annotations Annotations for apiToken job
+    ##
+    annotations: { }
+    ## @param apiTokenJob.podLabels Map of labels to add to apiToken job
+    ##
+    podLabels: { }
+    ## @param apiTokenJob.podAnnotations Map of annotations to add to apiToken job
+    ##
+    podAnnotations: { }
+    ## apiTokenJob image version
+    ## @param apiTokenJob.image.registry apiTokenJob image registry
+    ## @param apiTokenJob.image.repository apiTokenJob image repository
+    ## @skip apiTokenJob.image.tag apiTokenJob image tag (immutable tags are recommended)
+    ## @param apiTokenJob.image.digest apiTokenJob image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+    ## @param apiTokenJob.image.pullPolicy apiTokenJob image pull policy
+    ## @param apiTokenJob.image.pullSecrets Specify image pull secrets
+    ## @param apiTokenJob.image.debug Specify if debug values should be set
+    ##
+    image:
+        registry: docker.io
+        repository: alpine/k8s
+        tag: "1.31.0"
+        digest: ""
+        ## Specify a imagePullPolicy
+        ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
+        ##
+        pullPolicy: IfNotPresent
+        ## Optionally specify an array of imagePullSecrets.
+        ## Secrets must be manually created in the namespace.
+        ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+        ## e.g:
+        ## pullSecrets:
+        ##   - myRegistryKeySecretName
+        ##
+        pullSecrets: [ ]
+        ## Enable debug mode
+        ##
+        debug: false
+    ## Service account dedicated to apiToken job
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+    ##
+    serviceAccount:
+        ## @param apiTokenJob.serviceAccount.create Enable creation of ServiceAccount
+        ##
+        create: true
+        ## @param apiTokenJob.serviceAccount.name The name of the ServiceAccount to use.
+        ## If not set and create is true, a name is generated using the common.names.fullname template
+        ##
+        name: ""
+        ## @param apiTokenJob.serviceAccount.automount Allows auto mount of ServiceAccountToken on the serviceAccount created
+        ## Can be set to false if pods using this serviceAccount do not need to use K8s API
+        ##
+        automount: true
+        ## @param apiTokenJob.serviceAccount.annotations Additional custom annotations for the ServiceAccount
+        ##
+        annotations: { }
+    ## Pod Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param apiTokenJob.podSecurityContext.enabled Enable security context
+    ## @param apiTokenJob.podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+    ## @param apiTokenJob.podSecurityContext.fsGroup Group ID for the pod
+    ##
+    podSecurityContext:
+        enabled: true
+        fsGroupChangePolicy: OnRootMismatch
+        fsGroup: 1000
+    ## Container Security Context
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    ## @param apiTokenJob.containerSecurityContext.enabled Enabled containers' Security Context
+    ## @param apiTokenJob.containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+    ## @param apiTokenJob.containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+    ## @param apiTokenJob.containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+    ## @param apiTokenJob.containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+    ## @param apiTokenJob.containerSecurityContext.privileged Set container's Security Context privileged
+    ## @param apiTokenJob.containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+    ## @param apiTokenJob.containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+    ## @param apiTokenJob.containerSecurityContext.capabilities.drop List of capabilities to be dropped
+    ## @param apiTokenJob.containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+    ##
+    containerSecurityContext:
+        enabled: true
+        seLinuxOptions: { }
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        privileged: false
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop: [ "ALL" ]
+        seccompProfile:
+            type: "RuntimeDefault"
+    ## @param apiTokenJob.resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+    ## Example:
+    ## resources:
+    ##   requests:
+    ##     cpu: 2
+    ##     memory: 512Mi
+    ##   limits:
+    ##     cpu: 3
+    ##     memory: 1024Mi
+    ##
+    resources: { }
+    ## @param apiTokenJob.extraEnvVars Array with extra environment variables to add to the apiToken job
+    ## e.g:
+    ## extraEnvVars:
+    ##   - name: FOO
+    ##     value: "bar"
+    ##
+    extraEnvVars: [ ]
+    ## Configure extra options for apiToken job liveness, readiness and startup probes
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+    ## @param apiTokenJob.livenessProbe.enabled Enable livenessProbe on apiToken job
+    ## @param apiTokenJob.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+    ## @param apiTokenJob.livenessProbe.periodSeconds Period seconds for livenessProbe
+    ## @param apiTokenJob.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+    ## @param apiTokenJob.livenessProbe.failureThreshold Failure threshold for livenessProbe
+    ## @param apiTokenJob.livenessProbe.successThreshold Success threshold for livenessProbe
+    ##
+    livenessProbe:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param apiTokenJob.readinessProbe.enabled Enable readinessProbe on apiToken job
+    ## @param apiTokenJob.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+    ## @param apiTokenJob.readinessProbe.periodSeconds Period seconds for readinessProbe
+    ## @param apiTokenJob.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+    ## @param apiTokenJob.readinessProbe.failureThreshold Failure threshold for readinessProbe
+    ## @param apiTokenJob.readinessProbe.successThreshold Success threshold for readinessProbe
+    ##
+    readinessProbe:
+        enabled: true
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+        successThreshold: 1
+    ## @param apiTokenJob.startupProbe.enabled Enable startupProbe on apiToken job
+    ## @param apiTokenJob.startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+    ## @param apiTokenJob.startupProbe.periodSeconds Period seconds for startupProbe
+    ## @param apiTokenJob.startupProbe.timeoutSeconds Timeout seconds for startupProbe
+    ## @param apiTokenJob.startupProbe.failureThreshold Failure threshold for startupProbe
+    ## @param apiTokenJob.startupProbe.successThreshold Success threshold for startupProbe
+    ##
+    startupProbe:
+        enabled: false
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 1
+        failureThreshold: 15
+        successThreshold: 1
+    ## @param apiTokenJob.extraVolumeMounts Optionally specify extra list of additional volumeMounts for the apiToken Job
+    ##
+    extraVolumeMounts: [ ]
+    ## @param apiTokenJob.extraVolumes Optionally specify extra list of additional volumes for the apiToken Job
+    ##
+    extraVolumes: [ ]
+    ## @param apiTokenJob.affinity Affinity for apiTokenJob pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+    ## Note: apiTokenJob.podAffinityPreset, apiTokenJob.podAntiAffinityPreset, and apiTokenJob.nodeAffinityPreset will be ignored when it's set
+    ##
+    affinity: { }
+    ## @param apiTokenJob.nodeSelector Node labels for apiTokenJob pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    ##
+    nodeSelector: { }
+    ## @param apiTokenJob.tolerations Tolerations for apiTokenJob pods assignment
+    ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+    ##
+    tolerations: [ ]
+## Configure the ingress for the webserver. Disabled when Gateway API is enabled
+## Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+## @param ingress.enabled Enable the creation of an ingress for the webserver
+## @param ingress.pathType Path type for the webserver ingress
+## @param ingress.apiVersion Ingress API version for the webserver ingress
+## @param ingress.hostname Ingress hostname for the webserver ingress
+## @param ingress.annotations Annotations for the webserver ingress. To enable certificate autogeneration, place here your cert-manager annotations.
+## @param ingress.tls Enable TLS for the webserver ingress
+## @param ingress.extraHosts Extra hosts array for the webserver ingress
+## @param ingress.path Path array for the webserver ingress
+## @param ingress.extraPaths Extra paths for the webserver ingress
+## @param ingress.extraTls Extra TLS configuration for the webserver ingress
+## @param ingress.secrets Secrets array to mount into the Ingress
+## @param ingress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
+##
+ingress:
+    ## Set to true to enable ingress record generation
+    ##
+    enabled: false
+    ## @param server.ingress.selfSigned Create a TLS secret for this ingress record using self-signed certificates generated by Helm
+    ##
+    selfSigned: false
+
+    ## Ingress Path type
+    ##
+    pathType: ImplementationSpecific
+    ## Override API Version (automatically detected if not set)
+    ##
+    apiVersion: ""
+    ## When the ingress is enabled, a host pointing to this will be created
+    ##
+    hostname: paperless.domain
+    ## The Path to webserver. You may need to set this to '/*' in order to use this
+    ## with ALB ingress controllers.
+    ##
+    path: /
+    ## For a full list of possible ingress annotations, please see
+    ## ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md
+    ## Use this parameter to set the required annotations for cert-manager, see
+    ## ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
+    ##
+    ## e.g:
+    ## annotations:
+    ##   kubernetes.io/ingress.class: nginx
+    ##   cert-manager.io/cluster-issuer: cluster-issuer-name
+    ##
+    annotations: { }
+    ## Enable TLS configuration for the hostname defined at ingress.hostname parameter
+    ## TLS certificates will be retrieved from a TLS secret with name: {{- printf "%s-tls" .Values.ingress.hostname }}
+    ## You can use the ingress.secrets parameter to create this TLS secret or rely on cert-manager to create it
+    ##
+    tls: false
+    ## The list of additional hostnames to be covered with this ingress record.
+    ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
+    extraHosts: [ ]
+    ## - name: paperless.domain
+    ##   path: /
+    ##
+
+    ## Any additional arbitrary paths that may need to be added to the ingress under the main host.
+    ## For example: The ALB ingress controller requires a special rule for handling SSL redirection.
+    extraPaths: [ ]
+    ## - path: /*
+    ##   backend:
+    ##     serviceName: ssl-redirect
+    ##     servicePort: use-annotation
+    ##
+
+    ## The tls configuration for additional hostnames to be covered with this ingress record.
+    ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+    extraTls: [ ]
+    ## - hosts:
+    ##     - paperless.domain
+    ##   secretName: paperless.domain-tls
+    ##
+
+    ## If you're providing your own certificates, please use this to add the certificates as secrets
+    ## key and certificate should start with -----BEGIN CERTIFICATE----- or
+    ## -----BEGIN RSA PRIVATE KEY-----
+    ##
+    ## name should line up with a tlsSecret set further up
+    ## If you're using cert-manager, this is unneeded, as it will create the secret for you if it is not set
+    ##
+    ## It is also possible to create and manage the certificates outside of this helm chart
+    ## Please see README.md for more information
+    ##
+    secrets: [ ]
+    ## - name: paperless.domain-tls
+    ##   key:
+    ##   certificate:
+    ##
+
+    ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
+    ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
+    ##
+    ingressClassName: ""
+    ## @param server.ingress.extraRules Additional rules to be covered with this ingress record
+    ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
+    ## e.g:
+    ## extraRules:
+    ## - host: example.local
+    ##     http:
+    ##       path: /
+    ##       backend:
+    ##         service:
+    ##           name: example-svc
+    ##           port:
+    ##             name: http
+    ##
+    extraRules: [ ]
+## @section httproute Gateway API HTTPRoute configuration
+## ref: https://gateway-api.sigs.k8s.io/api-types/httproute/
+##
+httproute:
+    ## @param httproute.enabled Enable HTTPRoute generation for webserver
+    ##
+    enabled: false
+    ## @param httproute.annotations Additional annotations for the HTTPRoute resource
+    ##
+    annotations: { }
+    ## @param httproute.labels Additional labels for the HTTPRoute resource
+    ##
+    labels: { }
+    ## @param httproute.parentRefs Gateways the HTTPRoute is attached to. If unspecified, it'll be attached to Gateway named 'gateway' in the same namespace.
+    ## e.g:
+    ## parentRefs:
+    ##   - name: my-gateway
+    ##     sectionName: http
+    ##     namespace: default
+    ##
+    parentRefs: [ ]
+    ## @param httproute.hostnames List of hostnames matching HTTP header
+    ##
+    hostnames:
+        - paperless.domain
+    ## @param httproute.matches List of match rules applied to the HTTPRoute for the default svc backend reference
+    ##
+    matches:
+        -   path:
+                type: PathPrefix
+                value: /
+    ## @param httproute.filters List of filter rules applied to the HTTPRoute for the default svc backend reference
+    ##
+    filters: [ ]
+    ## @param httproute.extraRules List of extra rules applied to the HTTPRoute
+    ## e.g:
+    ## extraRules:
+    ##   - matches:
+    ##       - path:
+    ##           type: PathPrefix
+    ##           value: /
+    ##     backendRefs:
+    ##       - name: paperless-webserver
+    ##         port: 80
+    ##
+    extraRules: [ ]
+## Enable persistence using Persistent Volume Claims
+## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+##
+persistence:
+    data:
+        ## @param persistence.data.enabled Enable data (search index, SQLite database, classification model, etc) persistence using PVC
+        ##
+        enabled: true
+        ## @param persistence.data.volumeName Name to assign the volume
+        ##
+        volumeName: "data"
+        ## @param persistence.data.existingClaim Name of an existing PVC to use
+        ##
+        existingClaim: ""
+        ## @param persistence.data.mountPath The path the volume will be mounted at
+        ##
+        mountPath: /var/paperless/data
+        ## @param persistence.data.subPath The subdirectory of the volume to mount to
+        ## Useful in dev environments and one PV for multiple services
+        ##
+        subPath: ""
+        ## @param persistence.data.storageClass PVC Storage Class for data volume
+        ##
+        storageClass: ""
+        ## @param persistence.data.accessModes PVC Access Mode for data volume
+        ##
+        accessModes:
+            - ReadWriteOnce
+        ## @param persistence.data.size PVC Storage Request for data volume
+        ##
+        size: 10Gi
+        ## @param persistence.data.annotations Annotations for the PVC
+        ##
+        annotations: { }
+        ## @param persistence.data.labels Labels for the PVC
+        ##
+        labels: { }
+        ## @param persistence.data.selector Selector to match an existing Persistent Volume (this value is evaluated as a template)
+        ## selector:
+        ##   matchLabels:
+        ##     app: my-app
+        ##
+        selector: { }
+        ## @param persistence.data.dataSource Custom PVC data source
+        ##
+        dataSource: { }
+    media:
+        ## @param persistence.data.enabled Enable data (search index, SQLite database, classification model, etc) persistence using PVC
+        ##
+        enabled: true
+        ## @param persistence.data.volumeName Name to assign the volume
+        ##
+        volumeName: "media"
+        ## @param persistence.data.existingClaim Name of an existing PVC to use
+        ##
+        existingClaim: ""
+        ## @param persistence.data.mountPath The path the volume will be mounted at
+        ##
+        mountPath: /var/paperless/media
+        ## @param persistence.data.subPath The subdirectory of the volume to mount to
+        ## Useful in dev environments and one PV for multiple services
+        ##
+        subPath: ""
+        ## @param persistence.data.storageClass PVC Storage Class for data volume
+        ##
+        storageClass: ""
+        ## @param persistence.data.accessModes PVC Access Mode for data volume
+        ##
+        accessModes:
+            - ReadWriteOnce
+        ## @param persistence.data.size PVC Storage Request for data volume
+        ##
+        size: 10Gi
+        ## @param persistence.data.annotations Annotations for the PVC
+        ##
+        annotations: { }
+        ## @param persistence.data.labels Labels for the PVC
+        ##
+        labels: { }
+        ## @param persistence.data.selector Selector to match an existing Persistent Volume (this value is evaluated as a template)
+        ## selector:
+        ##   matchLabels:
+        ##     app: my-app
+        ##
+        selector: { }
+        ## @param persistence.data.dataSource Custom PVC data source
+        ##
+        dataSource: { }
+        # -- Configuration for NFS server.
+        nfs:
+            server: ""
+            path: ""
+    consume:
+        ## @param persistence.data.enabled Enable data (search index, SQLite database, classification model, etc) persistence using PVC
+        ##
+        enabled: false
+        ## @param persistence.data.volumeName Name to assign the volume
+        ##
+        volumeName: "consume"
+        ## @param persistence.data.existingClaim Name of an existing PVC to use
+        ##
+        existingClaim: ""
+        ## @param persistence.data.mountPath The path the volume will be mounted at
+        ##
+        mountPath: /var/paperless/consume
+        ## @param persistence.data.subPath The subdirectory of the volume to mount to
+        ## Useful in dev environments and one PV for multiple services
+        ##
+        subPath: ""
+        ## @param persistence.data.storageClass PVC Storage Class for data volume
+        ##
+        storageClass: ""
+        ## @param persistence.data.accessModes PVC Access Mode for data volume
+        ##
+        accessModes:
+            - ReadWriteOnce
+        ## @param persistence.data.size PVC Storage Request for data volume
+        ##
+        size: 1Gi
+        ## @param persistence.data.annotations Annotations for the PVC
+        ##
+        annotations: { }
+        ## @param persistence.data.labels Labels for the PVC
+        ##
+        labels: { }
+        ## @param persistence.data.selector Selector to match an existing Persistent Volume (this value is evaluated as a template)
+        ## selector:
+        ##   matchLabels:
+        ##     app: my-app
+        ##
+        selector: { }
+        ## @param persistence.data.dataSource Custom PVC data source
+        ##
+        dataSource: { }
+        # -- Configuration for NFS server
+        nfs:
+            server: ""
+            path: ""
+## @section PostgreSQL chart configuration
+## ref: https://github.com/bitnami/charts/blob/main/bitnami/postgresql/values.yaml
+## @param postgresql.enabled Switch to enable or disable the PostgreSQL helm chart
+## @param postgresql.auth.username Name for a custom user to create
+## @param postgresql.auth.password Password for the custom user to create
+## @param postgresql.auth.database Name for a custom database to create
+## @param postgresql.auth.existingSecret Name of existing secret to use for PostgreSQL credentials
+## @param postgresql.architecture PostgreSQL architecture (`standalone` or `replication`)
+## @param postgresql.primary.service.ports.postgresql PostgreSQL service port
+##
+postgresql:
+    enabled: true
+    auth:
+        username: paperless
+        password: ""
+        database: paperless
+        existingSecret: ""
+    architecture: standalone
+    primary:
+        service:
+            ports:
+                postgresql: 5432
+## @section Dragonfly chart configuration
+## ref: https://github.com/dragonflydb/dragonfly/blob/main/contrib/charts/dragonfly/values.yaml
+## @param dragonfly.enabled Switch to enable or disable the Dragonfly helm chart
+## @param dragonfly.service.port Dragonfly service port
+##
+dragonfly:
+    enabled: true
+    service:
+        port: 6379

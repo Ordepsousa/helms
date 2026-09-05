@@ -1,0 +1,39 @@
+{{- if .Values.httproute.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+    name: {{ include "paperless.webServerName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    {{- $labels := include "common.tplvalues.merge" (dict "values" (list .Values.httproute.labels .Values.commonLabels) "context" .) }}
+    labels: {{- include "common.labels.standard" (dict "customLabels" $labels "context" .) | nindent 8 }}
+        app.kubernetes.io/component: webserver
+    {{- if or .Values.httproute.annotations .Values.commonAnnotations }}
+    {{- $annotations := include "common.tplvalues.merge" (dict "values" (list .Values.httproute.annotations .Values.commonAnnotations) "context" .) }}
+    annotations: {{- include "common.tplvalues.render" (dict "value" $annotations "context" .) | nindent 8 }}
+    {{- end }}
+spec:
+    parentRefs:
+        {{- if .Values.httproute.parentRefs }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.httproute.parentRefs "context" .) | nindent 8 }}
+        {{- else }}
+        -   name: gateway
+            namespace: {{ include "common.names.namespace" . | quote }}
+        {{- end }}
+    hostnames: {{- include "common.tplvalues.render" (dict "value" .Values.httproute.hostnames "context" .) | nindent 8 }}
+    rules:
+        -   backendRefs:
+                -   name: {{ include "paperless.webServerName" . }}
+                    port: {{ .Values.webserver.service.port }}
+                    weight: 1
+            {{- if .Values.httproute.matches }}
+            matches: {{- include "common.tplvalues.render" (dict "value" .Values.httproute.matches "context" .) | nindent 16 }}
+            {{- end }}
+            {{- if .Values.httproute.filters }}
+            filters: {{- include "common.tplvalues.render" (dict "value" .Values.httproute.filters "context" .) | nindent 16 }}
+            {{- end }}
+        {{- if .Values.httproute.extraRules }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.httproute.extraRules "context" .) | nindent 8 }}
+        {{- end }}
+{{- end }}
+
+

@@ -1,0 +1,626 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "global": {
+            "type": "object",
+            "properties": {
+                "commonLabels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "imagePullSecrets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "defaultStorageClass": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": true
+        },
+        "nameOverride": {
+            "type": "string",
+            "maxLength": 63
+        },
+        "fullnameOverride": {
+            "type": "string",
+            "maxLength": 63
+        },
+        "serviceAccount": {
+            "type": "object",
+            "properties": {
+                "create": {
+                    "type": "boolean"
+                },
+                "automount": {
+                    "type": "boolean"
+                },
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": true
+        },
+        "image": {
+            "type": "object",
+            "properties": {
+                "registry": {
+                    "type": "string"
+                },
+                "repository": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "digest": {
+                    "type": "string"
+                },
+                "pullPolicy": {
+                    "type": "string",
+                    "enum": [
+                        "IfNotPresent",
+                        "Always",
+                        "Never"
+                    ]
+                },
+                "pullSecrets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "debug": {
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": true
+        },
+        "config": {
+            "type": "object",
+            "required": [
+                "domain",
+                "secretKey",
+                "ocr",
+                "redis",
+                "database"
+            ],
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "secretKey": {
+                    "type": "string"
+                },
+                "existingSecret": {
+                    "type": "string"
+                },
+                "createUser": {
+                    "type": "boolean"
+                },
+                "existingCredentialsSecret": {
+                    "type": "string"
+                },
+                "credentials": {
+                    "type": "object",
+                    "properties": {
+                        "mail": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "password": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "apiToken": {
+                    "type": "object",
+                    "properties": {
+                        "create": {
+                            "type": "boolean"
+                        },
+                        "apiKeySecretName": {
+                            "type": "string"
+                        },
+                        "image": {
+                            "type": "object"
+                        },
+                        "serviceAccount": {
+                            "type": "object"
+                        },
+                        "jobAnnotations": {
+                            "type": "object"
+                        },
+                        "backoffLimit": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "resources": {
+                            "type": "object"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "ocr": {
+                    "type": "object",
+                    "required": [
+                        "installLanguages",
+                        "languages"
+                    ],
+                    "properties": {
+                        "installLanguages": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        },
+                        "languages": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "redis": {
+                    "type": "object",
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": [
+                                "auto",
+                                "external"
+                            ]
+                        },
+                        "external": {
+                            "type": "object",
+                            "properties": {
+                                "host": {
+                                    "type": "string"
+                                },
+                                "port": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 65535
+                                },
+                                "username": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "index": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": true
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "database": {
+                    "type": "object",
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": [
+                                "auto",
+                                "sqlite",
+                                "postgresql",
+                                "external"
+                            ]
+                        },
+                        "external": {
+                            "type": "object",
+                            "properties": {
+                                "engine": {
+                                    "type": "string",
+                                    "enum": [
+                                        "postgres",
+                                        "mysql"
+                                    ]
+                                },
+                                "host": {
+                                    "type": "string"
+                                },
+                                "port": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 65535
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "username": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "existingSecretPasswordKey": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": true
+                        }
+                    },
+                    "additionalProperties": true
+                }
+            },
+            "additionalProperties": true
+        },
+        "webserver": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "strategy": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "Recreate",
+                                "RollingUpdate"
+                            ]
+                        }
+                    },
+                    "additionalProperties": true
+                }
+            },
+            "additionalProperties": true
+        },
+        "worker": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "strategy": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "Recreate",
+                                "RollingUpdate"
+                            ]
+                        }
+                    },
+                    "additionalProperties": true
+                }
+            },
+            "additionalProperties": true
+        },
+        "podAnnotations": {
+            "type": "object",
+            "additionalProperties": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            }
+        },
+        "podLabels": {
+            "type": "object",
+            "additionalProperties": {
+                "type": [
+                    "string",
+                    "null"
+                ]
+            }
+        },
+        "podSecurityContext": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "securityContext": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "service": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                }
+            },
+            "additionalProperties": true
+        },
+        "ingress": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable ingress record generation for webserver",
+                    "default": false
+                },
+                "pathType": {
+                    "type": "string",
+                    "description": "Ingress path type",
+                    "default": "ImplementationSpecific"
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "Default host for the ingress record",
+                    "default": "paperless.domain"
+                },
+                "ingressClassName": {
+                    "type": "string",
+                    "description": "IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)",
+                    "default": ""
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Default path for the ingress record",
+                    "default": "/"
+                },
+                "annotations": {
+                    "type": "object",
+                    "description": "Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations.",
+                    "default": {}
+                },
+                "tls": {
+                    "type": "boolean",
+                    "description": "Enable TLS configuration for the host defined at `ingress.hostname` parameter",
+                    "default": false
+                },
+                "selfSigned": {
+                    "type": "boolean",
+                    "description": "Create a TLS secret for this ingress record using self-signed certificates generated by Helm",
+                    "default": false
+                },
+                "extraHosts": {
+                    "type": "array",
+                    "description": "An array with additional hostname(s) to be covered with the ingress record",
+                    "default": [],
+                    "items": {}
+                },
+                "extraPaths": {
+                    "type": "array",
+                    "description": "An array with additional arbitrary paths that may need to be added to the ingress under the main host",
+                    "default": [],
+                    "items": {}
+                },
+                "extraTls": {
+                    "type": "array",
+                    "description": "TLS configuration for additional hostname(s) to be covered with this ingress record",
+                    "default": [],
+                    "items": {}
+                },
+                "secrets": {
+                    "type": "array",
+                    "description": "Custom TLS certificates as secrets",
+                    "default": [],
+                    "items": {}
+                },
+                "extraRules": {
+                    "type": "array",
+                    "description": "Additional rules to be covered with this ingress record",
+                    "default": [],
+                    "items": {}
+                }
+            }
+        },
+        "httproute": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable Gateway API HTTPRoute record generation for webserver",
+                    "default": false
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "Default hostname for the HTTPRoute",
+                    "default": "paperless.domain"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Default path for the HTTPRoute",
+                    "default": "/"
+                },
+                "annotations": {
+                    "type": "object",
+                    "description": "Additional annotations for the HTTPRoute resource",
+                    "default": {}
+                },
+                "parentRefs": {
+                    "type": "array",
+                    "description": "List of Gateway parentRefs the HTTPRoute should attach to",
+                    "default": [],
+                    "items": {}
+                },
+                "extraHostnames": {
+                    "type": "array",
+                    "description": "An array with additional hostnames to be covered with the HTTPRoute",
+                    "default": [],
+                    "items": {}
+                },
+                "extraRules": {
+                    "type": "array",
+                    "description": "Additional rules to be added to the HTTPRoute",
+                    "default": [],
+                    "items": {}
+                }
+            }
+        },
+        "resources": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "persistence": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "env": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            }
+        },
+        "envFrom": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            }
+        },
+        "extraVolumes": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            }
+        },
+        "extraVolumeMounts": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            }
+        },
+        "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "tolerations": {
+            "type": "array",
+            "items": {
+                "type": "object"
+            }
+        },
+        "affinity": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "tika": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "image": {
+                    "type": "object"
+                },
+                "service": {
+                    "type": "object"
+                },
+                "resources": {
+                    "type": "object"
+                },
+                "env": {
+                    "type": "array"
+                },
+                "envFrom": {
+                    "type": "array"
+                }
+            },
+            "additionalProperties": true
+        },
+        "gotenberg": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "image": {
+                    "type": "object"
+                },
+                "service": {
+                    "type": "object"
+                },
+                "resources": {
+                    "type": "object"
+                },
+                "env": {
+                    "type": "array"
+                },
+                "envFrom": {
+                    "type": "array"
+                }
+            },
+            "additionalProperties": true
+        },
+        "probes": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "startup": {
+                    "type": "object"
+                },
+                "liveness": {
+                    "type": "object"
+                },
+                "readiness": {
+                    "type": "object"
+                }
+            },
+            "additionalProperties": true
+        },
+        "postgresql": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "auth": {
+                    "type": "object"
+                },
+                "primary": {
+                    "type": "object"
+                }
+            },
+            "additionalProperties": true
+        },
+        "dragonfly": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "resources": {
+                    "type": "object"
+                }
+            },
+            "additionalProperties": true
+        }
+    },
+    "required": [
+        "config"
+    ],
+    "additionalProperties": true
+}
