@@ -175,9 +175,11 @@ jobs:
                 if: steps.semver.outputs.skip != 'true'
                 run: helm lint charts/${{ matrix.chart }}
 
-            -   name: Run render smoke tests
-                if: steps.semver.outputs.skip != 'true' && hashFiles(format('charts/{0}/tests/render.sh', matrix.chart)) != ''
-                run: ./charts/${{ matrix.chart }}/tests/render.sh
+            -   name: Run Helm Unit Tests
+                if: steps.semver.outputs.skip != 'true'
+                run: |
+                    helm plugin install https://github.com/helm-unittest/helm-unittest.git
+                    helm unittest charts/${{ matrix.chart }}
 
             -   name: Update Chart.yaml version
                 if: steps.semver.outputs.skip != 'true'
