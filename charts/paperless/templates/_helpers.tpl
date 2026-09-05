@@ -55,8 +55,8 @@
 
 {{/* config secret name */}}
 {{- define "paperless.configSecretName" -}}
-    {{- if .Values.existingSecret -}}
-        {{- .Values.existingSecret -}}
+    {{- if .Values.config.existingSecret -}}
+        {{- .Values.config.existingSecret -}}
     {{- else -}}
         {{- printf "%s-config" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
     {{- end -}}
