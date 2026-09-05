@@ -2,11 +2,11 @@
 
 Deploys Paperless NGX as three workloads:
 
-| Workload    | Purpose                                                      | Scaling                      |
-|-------------|--------------------------------------------------------------|------------------------------|
-| `core`      | Migrations, document consumer, scheduler, Tika and Gotenberg | Always 1 replica, `Recreate` |
-| `webserver` | web UI                                                       | Configurable                 |
-| `worker`    | Celery task processing                                       | Configurable                 |
+| Workload    | Purpose                                                | Scaling                      |
+|-------------|--------------------------------------------------------|------------------------------|
+| `core`      | init, document consumer, scheduler, Tika and Gotenberg | Always 1 replica, `Recreate` |
+| `webserver` | web UI                                                 | Configurable                 |
+| `worker`    | Celery task processing                                 | Configurable                 |
 
 ## Requirements
 

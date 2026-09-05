@@ -32,59 +32,82 @@ spec:
             securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.podSecurityContext "context" $) | nindent 16 }}
             {{- end }}
             initContainers:
-                -   name: {{ .Chart.Name }}-migrations
+                {{- if .Values.config.ocr.installLanguages }}
+                -   name: init-tesseract-langs
+                    image: {{ include "paperless.image" . | quote }}
+                    {{- if .Values.core.fetchOcr.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.fetchOcr.containerSecurityContext "context" $) | nindent 24 }}
+                    {{- end }}
+                    command: [ "/scripts/init-tesseract-langs.sh" ]
+                    env:
+                        -   name: PAPERLESS_OCR_LANGUAGES
+                            value: {{ join " " .Values.config.ocr.installLanguages | quote }}
+                        {{- if .Values.core.fetchOcr.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.fetchOcr.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    resources: {{- toYaml .Values.core.fetchOcr.resources | nindent 24 }}
+                    volumeMounts:
+                        -   name: init-scripts
+                            mountPath: /scripts
+                            readOnly: true
+                        -   name: data
+                            mountPath: {{ .Values.persistence.data.mountPath }}
+                            {{- if .Values.persistence.data.subPath }}
+                            subPath: {{ .Values.persistence.data.subPath }}
+                            {{- end }}
+                        {{- if .Values.core.fetchOcr.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.fetchOcr.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- end }}
+                {{- end }}
+                -   name: init
                     image: {{ include "paperless.image" . | quote }}
                     imagePullPolicy: {{ .Values.image.pullPolicy }}
-                    command:
-                        - /bin/sh
-                        - -c
-                        - |
-                            set -eu
-                            DB_ENGINE="${PAPERLESS_DBENGINE:-sqlite}"
-                            DB_HOST="${PAPERLESS_DBHOST:-localhost}"
-
-                            if [ "$DB_ENGINE" = "postgresql" ]; then
-                                echo "Waiting for PostgreSQL to start..."
-                                while ! pg_isready -h "$DB_HOST" -p "${PAPERLESS_DBPORT:-5432}" --username "${PAPERLESS_DBUSER:-paperless}"; do
-                                    echo "Database is not ready yet. Retrying..."
-                                    sleep 3
-                                done
-                                echo "Connected to PostgreSQL"
-                            elif [ "$DB_ENGINE" = "mariadb" ]; then
-                                echo "Waiting for MariaDB to start..."
-                                while ! mariadb-admin --host="$DB_HOST" --port="${PAPERLESS_DBPORT:-3306}" --skip-ssl ping --silent >/dev/null 2>&1; do
-                                    echo "Database is not ready yet. Retrying..."
-                                    sleep 3
-                                done
-                                echo "Connected to MariaDB"
-                            fi
-
-                            echo "Waiting for Redis to start..."
-                            while ! wait-for-redis.py >/dev/null 2>&1; do
-                                echo "Redis is not ready yet. Retrying..."
-                                sleep 3
-                            done
-                            echo "Connected to Redis"
-
-                            echo "Running migrations..."
-                            python3 manage.py migrate
-                            echo "Migrations done"
-                    {{- if .Values.core.migrations.containerSecurityContext.enabled }}
-                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.migrations.containerSecurityContext "context" $) | nindent 24 }}
+                    command: [ "/scripts/init.sh" ]
+                    {{- if .Values.core.init.containerSecurityContext.enabled }}
+                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.core.init.containerSecurityContext "context" $) | nindent 24 }}
                     {{- end }}
                     env: {{- include "paperless.baseEnv" . | nindent 24 }}
-                        {{- if .Values.core.migrations.extraEnvVars }}
-                        {{- include "common.tplvalues.render" (dict "value" .Values.core.migrations.extraEnvVars "context" $) | nindent 24 }}
+                        -   name: USER_IS_NON_ROOT
+                            value: "true"
+                        -   name: PAPERLESS_OCR_LANGUAGE
+                            value: {{ join "+" .Values.config.ocr.languages | quote }}
+                        {{- if or .Values.config.createUser .Values.config.existingCredentialsSecret }}
+                        -   name: PAPERLESS_ADMIN_USER
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: name
+                        -   name: PAPERLESS_ADMIN_PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: password
+                        -   name: PAPERLESS_ADMIN_MAIL
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ include "paperless.credentialsSecretName" . }}
+                                    key: mail
                         {{- end }}
-                    resources: {{- toYaml .Values.core.migrations.resources | nindent 24 }}
+                        {{- if .Values.core.init.extraEnvVars }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.init.extraEnvVars "context" $) | nindent 24 }}
+                        {{- end }}
+                    resources: {{- toYaml .Values.core.init.resources | nindent 24 }}
                     volumeMounts: {{- include "paperless.baseVolumeMounts" . | nindent 24 }}
-                        -   name: migrations-tmp
+                        -   name: init-scripts
+                            mountPath: /scripts
+                            readOnly: true
+                        -   name: init-tmp
                             mountPath: /tmp
-                        {{- if .Values.core.migrations.extraVolumeMounts }}
-                        {{- include "common.tplvalues.render" (dict "value" .Values.core.migrations.extraVolumeMounts "context" $) | nindent 24 }}
+                        {{- range $lang := .Values.config.ocr.installLanguages }}
+                        -   name: data
+                            mountPath: {{ printf "%s/%s.traineddata" (include "paperless.tessdataPath" .) $lang }}
+                            subPath: {{ printf "%s/tessdata/%s.traineddata" (default "" $.Values.persistence.data.subPath) $lang | trimPrefix "/" }}
+                        {{- end }}
+                        {{- if .Values.core.init.extraVolumeMounts }}
+                        {{- include "common.tplvalues.render" (dict "value" .Values.core.init.extraVolumeMounts "context" $) | nindent 24 }}
                         {{- end }}
             containers:
-                -   name: {{ .Chart.Name }}-consumer
+                -   name: consumer
                     image: {{ include "paperless.image" . | quote }}
                     imagePullPolicy: {{ .Values.image.pullPolicy }}
                     command:
@@ -112,7 +135,7 @@ spec:
                         {{- if .Values.core.consumer.extraVolumeMounts }}
                         {{- include "common.tplvalues.render" (dict "value" .Values.core.consumer.extraVolumeMounts "context" $) | nindent 24 }}
                         {{- end }}
-                -   name: {{ .Chart.Name }}-scheduler
+                -   name: scheduler
                     image: {{ include "paperless.image" . | quote }}
                     imagePullPolicy: {{ .Values.image.pullPolicy }}
                     command:
@@ -220,7 +243,11 @@ spec:
                         {{- end }}
                 {{- end }}
             volumes: {{- include "paperless.volumes" (dict "volumes" (list "data" "consume") "context" $) | indent 16 }}
-                -   name: migrations-tmp
+                -   name: init-scripts
+                    configMap:
+                        name: {{ include "paperless.scriptsConfigName" . }}
+                        defaultMode: 0755
+                -   name: init-tmp
                     emptyDir: { }
                 -   name: consumer-tmp
                     emptyDir: { }

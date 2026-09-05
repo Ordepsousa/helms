@@ -3,6 +3,11 @@
     {{- printf "%s-core" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* scripts configmap name */}}
+{{- define "paperless.scriptsConfigName" -}}
+    {{- printf "%s-init-scripts" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/* webserver name */}}
 {{- define "paperless.webServerName" -}}
     {{- printf "%s-webserver" (include "common.names.fullname" .) | trunc 63 | trimSuffix "-" -}}
@@ -264,6 +269,11 @@ without an external database configuration
     {{- printf "%s/scratch" .Values.persistence.media.mountPath -}}
 {{- end -}}
 
+{{/* tessdata path where to download extra languages */}}
+{{- define "paperless.tessdataPath" -}}
+    {{- print "/usr/share/tesseract-ocr/5/tessdata" -}}
+{{- end -}}
+
 {{/* generate volumes */}}
 {{- define "paperless.volumes" -}}
     {{- $context := .context -}}
@@ -282,7 +292,7 @@ without an external database configuration
     {{- end -}}
 {{- end -}}
 
-{{/* database base env to be used by all paperless containers */}}
+{{/* base volume mounts used by all paperless containers */}}
 {{- define "paperless.baseVolumeMounts" -}}
 -   name: data
     mountPath: {{ .Values.persistence.data.mountPath }}
@@ -291,7 +301,7 @@ without an external database configuration
     {{- end }}
 {{- end -}}
 
-{{/* wait for core initContainer used to wait for databse, migrations, tika and gotenberg to be ready */}}
+{{/* wait for core initContainer used to wait for core init, tika and gotenberg to be ready */}}
 {{- define "paperless.waitForCore" -}}
 -   name: wait-for-core
     image: {{ include "paperless.image" . | quote }}
@@ -301,9 +311,9 @@ without an external database configuration
         - -c
         - |
             set -eu
-            echo "Waiting for database and migrations..."
+            echo "Waiting for database..."
             until python3 manage.py migrate --check; do
-                echo "Database or migrations are not ready yet. Retrying..."
+                echo "Database is not ready yet. Retrying..."
                 sleep 3
             done
             {{- if .Values.core.tika.enabled }}

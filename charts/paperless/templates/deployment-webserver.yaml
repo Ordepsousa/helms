@@ -33,15 +33,17 @@ spec:
             {{- end }}
             initContainers: {{- include "paperless.waitForCore" . | nindent 16 }}
             containers:
-                -   name: {{ .Chart.Name }}-webserver
+                -   name: webserver
                     image: {{ include "paperless.image" . | quote }}
                     imagePullPolicy: {{ .Values.image.pullPolicy }}
                     command:
-                        - /bin/sh
-                        - -c
-                        - |
-                            python3 manage.py manage_superuser && \
-                            exec granian --interface asginl --ws --loop uvloop paperless.asgi:application
+                        - granian
+                        - --interface
+                        - asginl
+                        - --ws
+                        - --loop
+                        - uvloop
+                        - paperless.asgi:application
                     {{- if .Values.webserver.containerSecurityContext.enabled }}
                     securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.webserver.containerSecurityContext "context" $) | nindent 24 }}
                     {{- end }}
@@ -54,23 +56,6 @@ spec:
                             value: "::"
                         -   name: GRANIAN_PORT
                             value: "{{ .Values.webserver.service.port }}"
-                        {{- if or .Values.config.createUser .Values.config.existingCredentialsSecret }}
-                        -   name: PAPERLESS_ADMIN_USER
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "paperless.credentialsSecretName" . }}
-                                    key: name
-                        -   name: PAPERLESS_ADMIN_PASSWORD
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "paperless.credentialsSecretName" . }}
-                                    key: password
-                        -   name: PAPERLESS_ADMIN_MAIL
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "paperless.credentialsSecretName" . }}
-                                    key: mail
-                        {{- end }}
                         -   name: PAPERLESS_URL
                             value: {{ .Values.config.domain | quote }}
                         -   name: PAPERLESS_MEDIA_ROOT

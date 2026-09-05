@@ -31,83 +31,9 @@ spec:
             {{- if .Values.worker.podSecurityContext.enabled }}
             securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.worker.podSecurityContext "context" $) | nindent 16 }}
             {{- end }}
-            initContainers:
-                {{- if .Values.config.ocr.installLanguages }}
-                -   name: fetch-ocr
-                    image: {{ include "paperless.image" . | quote }}
-                    imagePullPolicy: {{ .Values.image.pullPolicy }}
-                    {{- if .Values.worker.fetchOcr.containerSecurityContext.enabled }}
-                    securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.worker.fetchOcr.containerSecurityContext "context" $) | nindent 24 }}
-                    {{- end }}
-                    command:
-                        - python3
-                        - -c
-                        - |
-                            import os
-                            import shutil
-                            import urllib.request
-
-                            src = "/usr/share/tesseract-ocr/5/tessdata"
-                            cache_dir = "{{ .Values.persistence.data.mountPath }}/tessdata"
-                            dst = "/tessdata"
-
-                            os.makedirs(cache_dir, exist_ok=True)
-
-                            # 1. Copy all original files from the base image to the shared volume
-                            print("Copying original tessdata...")
-                            if os.path.exists(src):
-                                for item in os.listdir(src):
-                                    s = os.path.join(src, item)
-                                    d = os.path.join(dst, item)
-                                    if not os.path.exists(d):
-                                        if os.path.isdir(s):
-                                            shutil.copytree(s, d, dirs_exist_ok=True)
-                                        else:
-                                            shutil.copy2(s, d)
-
-                            # 2. Download additional languages defined in values
-                            languages = os.environ.get("PAPERLESS_OCR_LANGUAGES", "").split()
-                            for lang in languages:
-                                filename = f"{lang}.traineddata"
-                                dst_path = os.path.join(dst, filename)
-                                cache_path = os.path.join(cache_dir, filename)
-
-                                if os.path.exists(dst_path):
-                                    continue
-
-                                if os.path.exists(cache_path):
-                                    print(f"Copying {lang} from data volume...")
-                                    shutil.copy2(cache_path, dst_path)
-                                else:
-                                    url = f"https://github.com/tesseract-ocr/tessdata_best/raw/main/{filename}"
-                                    print(f"Downloading {lang} from {url}...")
-                                    try:
-                                        urllib.request.urlretrieve(url, cache_path)
-                                        shutil.copy2(cache_path, dst_path)
-                                    except Exception as e:
-                                        print(f"Error downloading {lang}: {e}")
-                    env:
-                        -   name: PAPERLESS_OCR_LANGUAGES
-                            value: {{ join " " .Values.config.ocr.installLanguages | quote }}
-                        {{- if .Values.worker.fetchOcr.extraEnvVars }}
-                        {{- include "common.tplvalues.render" (dict "value" .Values.worker.fetchOcr.extraEnvVars "context" $) | nindent 24 }}
-                        {{- end }}
-                    resources: {{- toYaml .Values.worker.fetchOcr.resources | nindent 24 }}
-                    volumeMounts:
-                        -   name: data
-                            mountPath: {{ .Values.persistence.data.mountPath }}
-                            {{- if .Values.persistence.data.subPath }}
-                            subPath: {{ .Values.persistence.data.subPath }}
-                            {{- end }}
-                        -   name: tessdata
-                            mountPath: /tessdata
-                        {{- if .Values.worker.fetchOcr.extraVolumeMounts }}
-                        {{- include "common.tplvalues.render" (dict "value" .Values.worker.fetchOcr.extraVolumeMounts "context" $) | nindent 24 }}
-                        {{- end }}
-                {{- end -}}
-                {{- include "paperless.waitForCore" . | nindent 16 }}
+            initContainers: {{- include "paperless.waitForCore" . | nindent 16 }}
             containers:
-                -   name: {{ .Chart.Name }}-worker
+                -   name: worker
                     image: {{ include "paperless.image" . | quote }}
                     imagePullPolicy: {{ .Values.image.pullPolicy }}
                     command:
@@ -121,6 +47,8 @@ spec:
                     securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.worker.containerSecurityContext "context" $) | nindent 24 }}
                     {{- end }}
                     env: {{- include "paperless.baseEnv" . | nindent 24 }}
+                        -   name: PAPERLESS_OCR_MODE
+                            value: {{ .Values.config.ocr.mode | quote }}
                         -   name: PAPERLESS_MEDIA_ROOT
                             value: {{ .Values.persistence.media.mountPath | quote }}
                         -   name: PAPERLESS_CONSUMPTION_DIR
@@ -154,20 +82,17 @@ spec:
                             {{- if .Values.persistence.consume.subPath }}
                             subPath: {{ .Values.persistence.consume.subPath }}
                             {{- end }}
+                        {{- range $lang := .Values.config.ocr.installLanguages }}
+                        -   name: data
+                            mountPath: {{ printf "%s/%s.traineddata" (include "paperless.tessdataPath" .) $lang }}
+                            subPath: {{ printf "%s/tessdata/%s.traineddata" (default "" $.Values.persistence.data.subPath) $lang | trimPrefix "/" }}
+                        {{- end }}
                         -   name: worker-tmp
                             mountPath: /tmp
-                        {{- if .Values.config.ocr.installLanguages }}
-                        -   name: tessdata
-                            mountPath: /usr/share/tesseract-ocr/5/tessdata
-                        {{- end }}
                         {{- if .Values.worker.extraVolumeMounts }}
                         {{- include "common.tplvalues.render" (dict "value" .Values.worker.extraVolumeMounts "context" $) | nindent 24 }}
                         {{- end }}
             volumes: {{- include "paperless.volumes" (dict "volumes" (list "data" "media" "consume") "context" $) | indent 16 }}
-                {{- if .Values.config.ocr.installLanguages }}
-                -   name: tessdata
-                    emptyDir: { }
-                {{- end }}
                 -   name: wait-tmp
                     emptyDir: { }
                 -   name: worker-tmp

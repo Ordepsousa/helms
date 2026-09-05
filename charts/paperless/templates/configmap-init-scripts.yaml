@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: {{ include "paperless.scriptsConfigName" . }}
+    namespace: {{ include "common.names.namespace" . | quote }}
+    labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+        app.kubernetes.io/component: core
+    {{- if .Values.commonAnnotations }}
+    annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+    {{- end }}
+data:
+    init.sh: |
+        #!/bin/bash
+        set -eu
+
+        bash /etc/s6-overlay/s6-rc.d/init-folders/run
+        bash /etc/s6-overlay/s6-rc.d/init-wait-for-redis/run
+        bash /etc/s6-overlay/s6-rc.d/init-wait-for-db/run
+        bash /etc/s6-overlay/s6-rc.d/init-migrations/run
+        bash /etc/s6-overlay/s6-rc.d/init-search-index/run
+        bash /etc/s6-overlay/s6-rc.d/init-superuser/run
+        bash /etc/s6-overlay/s6-rc.d/init-system-checks/run
+    {{- if .Values.config.ocr.installLanguages }}
+    init-tesseract-langs.sh: |
+        #!/bin/bash
+        set -eu
+
+        declare -r log_prefix="[init-tesseract-langs]"
+        declare -r src_dir={{ include "paperless.tessdataPath" . | quote }}
+        declare -r dst_dir={{ printf "%s/tessdata" .Values.persistence.data.mountPath | quote }}
+
+        mkdir -p "${dst_dir}"
+
+        echo "${log_prefix} Checking if additional tesseract languages needed"
+
+        languages="${PAPERLESS_OCR_LANGUAGES:-}"
+        if [[ -z "${languages}" ]]; then
+            echo "${log_prefix} No additional installs requested"
+            exit 0
+        fi
+
+        echo "${log_prefix} Installing languages..."
+        for lang in ${languages}; do
+            filename="${lang}.traineddata"
+            src_path="${src_dir}/${filename}"
+            dst_path="${dst_dir}/${filename}"
+
+            if [[ -f "${src_path}" ]] || [[ -f "${dst_path}" ]]; then
+                echo "${log_prefix} Language ${lang} already installed!"
+            else
+                url="https://github.com/tesseract-ocr/tessdata_best/raw/main/${filename}"
+                echo "${log_prefix} Downloading ${lang} from ${url}..."
+
+                if curl -sSL -o "${dst_path}" "${url}"; then
+                    echo "${log_prefix} Installed ${lang}"
+                else
+                    echo "${log_prefix} Error downloading ${lang}"
+                    continue
+                fi
+            fi
+        done
+
+        echo "${log_prefix} Additional packages installed"
+{{- end -}}
