@@ -689,7 +689,7 @@ webserver:
     ## @param webserver.strategy.type webserver strategy type or if using SQLite database it uses Recreate update to avoid overlapping volume mounts
     ##
     strategy:
-        type: RollingUpdate
+        type: Recreate
     ## webserver service configuration
     ##
     service:
@@ -844,7 +844,7 @@ worker:
     ## @param worker.strategy.type worker strategy type or if using SQLite database it uses Recreate update to avoid overlapping volume mounts
     ##
     strategy:
-        type: RollingUpdate
+        type: Recreate
     ## @param worker.extraEnvVars Array with extra environment variables to add to worker container
     ## e.g:
     ## extraEnvVars:

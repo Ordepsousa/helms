@@ -47,7 +47,8 @@ worker:
         type: RollingUpdate
 ```
 
-*Note: The `core` workload scaling parameters are hard-coded in the chart templates to prevent race conditions during database migrations and document ingestion.*
+*Note: The `core` workload scaling parameters are hard-coded in the chart templates to prevent race conditions during database migrations and document ingestion. If you increase the replica count for
+any workload above 1, your Persistent Volume Claims (PVCs) must use ReadWriteMany (RWX) storage, as standard ReadWriteOnce (RWO) volumes cannot be attached across multiple nodes simultaneously.*
 
 ## Database and broker
 
