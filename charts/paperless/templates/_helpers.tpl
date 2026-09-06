@@ -173,7 +173,7 @@ without an external database configuration
         secretKeyRef:
             name: {{ include "paperless.configSecretName" . }}
             key: secretKey
-{{- if ne (include "paperless.databaseMode" .) "sqlite" }}
+    {{- if ne (include "paperless.databaseMode" .) "sqlite" }}
 -   name: PAPERLESS_DBENGINE
     value: "{{- if eq .Values.config.database.external.engine "mysql" -}}mariadb{{- else -}}postgresql{{- end -}}"
 -   name: PAPERLESS_DBHOST
@@ -189,21 +189,24 @@ without an external database configuration
         secretKeyRef:
             name: {{ include "paperless.databasePasswordSecretName" . }}
             key: {{ include "paperless.databasePasswordSecretKey" . }}
-{{- end }}
+    {{- end }}
 -   name: PAPERLESS_REDIS
     value: {{ include "paperless.redis.url" . | quote }}
 -   name: PAPERLESS_DATA_DIR
     value: {{ .Values.persistence.data.mountPath | quote }}
-{{- if .Values.core.tika.enabled }}
+    {{- if .Values.core.tika.enabled }}
 -   name: PAPERLESS_TIKA_ENABLED
     value: "true"
 -   name: PAPERLESS_TIKA_ENDPOINT
     value: "http://{{ include "paperless.tikaServiceName" . }}:{{ .Values.core.tika.service.port }}"
-{{- if .Values.core.gotenberg.enabled }}
+        {{- if .Values.core.gotenberg.enabled }}
 -   name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT
     value: "http://{{ include "paperless.gotenbergServiceName" . }}:{{ .Values.core.gotenberg.service.port }}"
-{{- end -}}
-{{- end -}}
+        {{- end -}}
+    {{- end -}}
+    {{- if .Values.config.extraEnvVars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.config.extraEnvVars "context" $) | nindent 0 }}
+    {{- end -}}
 {{- end -}}
 
 {{/* webserver replica count defaults to 1 if database is SQLite */}}

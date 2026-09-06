@@ -151,6 +151,13 @@ config:
             password: ""
             existingSecret: ""
             existingSecretPasswordKey: database-password
+    ## @param config.extraEnvVars Array with extra environment variables to add to all paperless containers
+    ## e.g:
+    ## extraEnvVars:
+    ##   - name: FOO
+    ##     value: "bar"
+    ##
+    extraEnvVars: [ ]
 ## @section core parameters
 ##
 core:
