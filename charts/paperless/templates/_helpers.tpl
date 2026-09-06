@@ -194,6 +194,16 @@ without an external database configuration
     value: {{ include "paperless.redis.url" . | quote }}
 -   name: PAPERLESS_DATA_DIR
     value: {{ .Values.persistence.data.mountPath | quote }}
+{{- if .Values.core.tika.enabled }}
+-   name: PAPERLESS_TIKA_ENABLED
+    value: "true"
+-   name: PAPERLESS_TIKA_ENDPOINT
+    value: "http://{{ include "paperless.tikaServiceName" . }}:{{ .Values.core.tika.service.port }}"
+{{- if .Values.core.gotenberg.enabled }}
+-   name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT
+    value: "http://{{ include "paperless.gotenbergServiceName" . }}:{{ .Values.core.gotenberg.service.port }}"
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/* webserver replica count defaults to 1 if database is SQLite */}}
