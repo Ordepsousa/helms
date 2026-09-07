@@ -22,7 +22,9 @@ spec:
     hostnames: {{- include "common.tplvalues.render" (dict "value" .Values.httproute.hostnames "context" .) | nindent 8 }}
     rules:
         -   backendRefs:
-                -   name: {{ include "paperless.webServerName" . }}
+                -   group: ""
+                    kind: Service
+                    name: {{ include "paperless.webServerName" . }}
                     port: {{ .Values.webserver.service.port }}
                     weight: 1
             {{- if .Values.httproute.matches }}
