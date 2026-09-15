@@ -17,7 +17,9 @@ config:
     auth:
         audience: netbird-dashboard
         client_id: netbird-dashboard
-        client_secret: ""
+        client_secret:
+            value: ""
+            secret: ""
         # -- if empty it uses https://{{ .Values.domain }}/oauth2
         authority: ""
         use_auth0: false

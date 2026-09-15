@@ -45,7 +45,14 @@ spec:
                         -   name: AUTH_CLIENT_ID
                             value: {{ .Values.config.auth.client_id | quote }}
                         -   name: AUTH_CLIENT_SECRET
-                            value: {{ default "" .Values.config.auth.client_secret | quote }}
+                            {{- if .Values.config.auth.client_secret.secret }}
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ .Values.config.auth.client_secret.secret }}
+                                    key: secret
+                            {{- else }}
+                            value: {{ default "" .Values.config.auth.client_secret.value | quote }}
+                            {{- end }}
                         -   name: AUTH_AUTHORITY
                             value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
                         -   name: USE_AUTH0

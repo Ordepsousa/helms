@@ -128,8 +128,6 @@
             "properties": {
                 "auth": {
                     "type": "object",
-                    "required": [
-                    ],
                     "properties": {
                         "audience": {
                             "type": "string"
@@ -138,7 +136,15 @@
                             "type": "string"
                         },
                         "client_secret": {
-                            "type": "string"
+                            "type": "object",
+                            "properties": {
+                                "value": {
+                                    "type": "string"
+                                },
+                                "secret": {
+                                    "type": "string"
+                                }
+                            }
                         },
                         "authority": {
                             "type": "string"
