@@ -57,7 +57,7 @@ spec:
                               sleep 3
                             done
 
-                            if kubectl get secret "$API_SECRET" -n netbird >/dev/null 2>&1; then
+                            if kubectl get secret "$API_SECRET" >/dev/null 2>&1; then
                               echo "API Secret already exists"
                               exit 0
                             fi
