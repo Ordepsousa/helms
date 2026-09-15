@@ -41,21 +41,21 @@ spec:
                         -   name: NETBIRD_MGMT_GRPC_API_ENDPOINT
                             value: "https://{{ .Values.domain }}:443"
                         -   name: AUTH_AUDIENCE
-                            value: "netbird-dashboard"
+                            value: {{ .Values.config.auth.audience | quote }}
                         -   name: AUTH_CLIENT_ID
-                            value: "netbird-dashboard"
+                            value: {{ .Values.config.auth.client_id | quote }}
                         -   name: AUTH_CLIENT_SECRET
-                            value: ""
+                            value: {{ default "" .Values.config.auth.client_secret | quote }}
                         -   name: AUTH_AUTHORITY
-                            value: "https://{{ .Values.domain }}/oauth2"
+                            value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
                         -   name: USE_AUTH0
-                            value: 'false'
+                            value: {{ .Values.config.auth.use_auth0 | quote }}
                         -   name: AUTH_SUPPORTED_SCOPES
-                            value: "openid profile email groups"
+                            value: {{ join " " .Values.config.auth.supported_scopes | quote }}
                         -   name: AUTH_REDIRECT_URI
-                            value: "/nb-auth"
+                            value: {{ .Values.config.auth.redirect_uri | quote }}
                         -   name: AUTH_SILENT_REDIRECT_URI
-                            value: "/nb-silent-auth"
+                            value: {{ .Values.config.auth.silent_redirect_uri | quote }}
                         -   name: NGINX_SSL_PORT
                             value: "443"
                         -   name: LETSENCRYPT_DOMAIN

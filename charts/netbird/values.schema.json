@@ -40,6 +40,9 @@
                 "minLength": 1
             }
         },
+        "config": {
+            "$ref": "#/definitions/config"
+        },
         "ingress": {
             "$ref": "#/definitions/ingress"
         },
@@ -117,6 +120,50 @@
         }
     ],
     "definitions": {
+        "config": {
+            "type": "object",
+            "required": [
+                "auth"
+            ],
+            "properties": {
+                "auth": {
+                    "type": "object",
+                    "required": [
+                    ],
+                    "properties": {
+                        "audience": {
+                            "type": "string"
+                        },
+                        "client_id": {
+                            "type": "string"
+                        },
+                        "client_secret": {
+                            "type": "string"
+                        },
+                        "authority": {
+                            "type": "string"
+                        },
+                        "use_auth0": {
+                            "type": "boolean"
+                        },
+                        "supported_scopes": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "redirect_uri": {
+                            "type": "string"
+                        },
+                        "silent_redirect_uri": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
         "ingress": {
             "type": "object",
             "required": [

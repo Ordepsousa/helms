@@ -11,6 +11,25 @@ domain: ""
 trustedHTTPProxies: [ ]
 # - "0.0.0.0/0"
 
+# -- Configuration for Netbird
+config:
+    # -- Auth related
+    auth:
+        audience: netbird-dashboard
+        client_id: netbird-dashboard
+        client_secret: ""
+        # -- if empty it uses https://{{ .Values.domain }}/oauth2
+        authority: ""
+        use_auth0: false
+        supported_scopes:
+            - openid
+            - profile
+            - email
+            - groups
+        redirect_uri: /nb-auth
+        silent_redirect_uri: /nb-silent-auth
+
+
 # -- HTTP Ingress exposure. Disabled when Gateway API is enabled.
 ingress:
     # -- Create dashboard and server Ingress resources.
