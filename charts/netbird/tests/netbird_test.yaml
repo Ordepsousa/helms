@@ -1,0 +1,270 @@
+suite: netbird chart functionality
+templates:
+    - templates/server/deployment.yaml
+    - templates/dashboard/deployment.yaml
+    - templates/server/secret.yaml
+    - templates/server/ingress.yaml
+    - templates/dashboard/ingress.yaml
+    - templates/server/service.yaml
+    - templates/server/stun-service.yaml
+    - templates/bootstrap/job.yaml
+    - templates/bootstrap/rbac.yaml
+tests:
+    -   it: deploys the server with configured replicas and strategy
+        template: templates/server/deployment.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            server.replicaCount: 3
+            server.strategy.type: RollingUpdate
+        asserts:
+            -   isKind:
+                    of: Deployment
+            -   equal:
+                    path: spec.replicas
+                    value: 3
+            -   equal:
+                    path: spec.strategy.type
+                    value: RollingUpdate
+            -   equal:
+                    path: spec.template.spec.containers[0].image
+                    value: netbirdio/netbird-server:0.77.0
+
+    -   it: forces a singleton recreate server for sqlite
+        template: templates/server/deployment.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            postgresql.enabled: false
+        asserts:
+            -   equal:
+                    path: spec.replicas
+                    value: 1
+            -   equal:
+                    path: spec.strategy.type
+                    value: Recreate
+            -   notExists:
+                    path: spec.template.spec.initContainers
+
+    -   it: applies server security settings and health probes
+        template: templates/server/deployment.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+        asserts:
+            -   equal:
+                    path: spec.template.spec.securityContext.seccompProfile.type
+                    value: RuntimeDefault
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+                    value: false
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+                    value: false
+            -   equal:
+                    path: spec.template.spec.containers[0].livenessProbe.tcpSocket.port
+                    value: health
+            -   equal:
+                    path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+                    value: health
+
+    -   it: deploys the dashboard with configured replicas and probe
+        template: templates/dashboard/deployment.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            dashboard.replicaCount: 2
+        asserts:
+            -   isKind:
+                    of: Deployment
+            -   equal:
+                    path: spec.replicas
+                    value: 2
+            -   equal:
+                    path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+                    value: /
+            -   equal:
+                    path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+                    value: false
+
+    -   it: renders bundled postgres connection in generated server config
+        template: templates/server/secret.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            postgresql.auth.postgresPassword: db-password
+        asserts:
+            -   isKind:
+                    of: Secret
+            -   matchRegex:
+                    path: stringData["config.yaml"]
+                    pattern: 'engine: "postgres"'
+
+    -   it: renders sqlite configuration when postgres is disabled
+        template: templates/server/secret.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            postgresql.enabled: false
+        asserts:
+            -   matchRegex:
+                    path: stringData["config.yaml"]
+                    pattern: 'engine: "sqlite"'
+
+    -   it: renders external mysql configuration
+        template: templates/server/secret.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            postgresql.enabled: false
+            server.database.mode: external
+            server.database.external.engine: mysql
+            server.database.external.host: mysql.example
+            server.database.external.port: 3306
+            server.database.external.username: netbird
+            server.database.external.password: db-password
+        asserts:
+            -   matchRegex:
+                    path: stringData["config.yaml"]
+                    pattern: 'engine: "mysql"'
+
+    -   it: injects the external mysql DSN into the server environment
+        template: templates/server/deployment.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            postgresql.enabled: false
+            server.database.mode: external
+            server.database.external.engine: mysql
+            server.database.external.host: mysql.example
+            server.database.external.port: 3306
+            server.database.external.username: netbird
+            server.database.external.password: db-password
+        asserts:
+            -   matchRegex:
+                    path: spec.template.spec.containers[0].env[1].value
+                    pattern: 'tcp\(mysql.example:3306\)'
+
+    -   it: uses an existing server config secret instead of generating one
+        template: templates/server/secret.yaml
+        set:
+            server.config.existingSecret: netbird-config
+        asserts:
+            -   hasDocuments:
+                    count: 0
+
+    -   it: creates ingress routes for dashboard and server
+        template: templates/server/ingress.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            ingress.enabled: true
+            ingress.className: nginx
+            ingress.hosts[0]: netbird.example.com
+            gateway.enabled: false
+        asserts:
+            -   isKind:
+                    of: Ingress
+            -   equal:
+                    path: spec.ingressClassName
+                    value: nginx
+            -   equal:
+                    path: spec.rules[0].http.paths[0].path
+                    value: /api
+            -   equal:
+                    path: spec.rules[0].http.paths[0].backend.service.name
+                    value: RELEASE-NAME-netbird-server
+
+    -   it: creates dashboard ingress for the root path
+        template: templates/dashboard/ingress.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            ingress.enabled: true
+            ingress.hosts[0]: netbird.example.com
+            gateway.enabled: false
+        asserts:
+            -   isKind:
+                    of: Ingress
+            -   equal:
+                    path: spec.rules[0].http.paths[0].path
+                    value: /
+            -   equal:
+                    path: spec.rules[0].http.paths[0].backend.service.name
+                    value: RELEASE-NAME-netbird-dashboard
+
+    -   it: creates the server and stun services with expected ports
+        template: templates/server/service.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+        asserts:
+            -   isKind:
+                    of: Service
+            -   equal:
+                    path: spec.ports[0].name
+                    value: http
+            -   equal:
+                    path: spec.ports[0].port
+                    value: 80
+
+    -   it: creates a load balancer stun service when configured
+        template: templates/server/stun-service.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            server.services.stun.type: LoadBalancer
+        asserts:
+            -   equal:
+                    path: spec.type
+                    value: LoadBalancer
+            -   equal:
+                    path: spec.ports[0].port
+                    value: 3478
+
+    -   it: creates bootstrap job and RBAC when enabled
+        template: templates/bootstrap/job.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            bootstrap.enabled: true
+            bootstrap.createUser: true
+            bootstrap.generateAPIKey: true
+        asserts:
+            -   isKind:
+                    of: Job
+            -   equal:
+                    path: metadata.annotations["helm.sh/hook"]
+                    value: post-install,post-upgrade
+            -   equal:
+                    path: spec.template.spec.restartPolicy
+                    value: OnFailure
+
+    -   it: does not create bootstrap job when user creation is disabled
+        template: templates/bootstrap/job.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            bootstrap.enabled: true
+            bootstrap.createUser: false
+            bootstrap.generateAPIKey: true
+        asserts:
+            -   hasDocuments:
+                    count: 0
+
+    -   it: creates bootstrap role permissions for secrets
+        template: templates/bootstrap/rbac.yaml
+        set:
+            domain: netbird.example.com
+            server.authSecret: test-auth
+            bootstrap.enabled: true
+            bootstrap.createUser: true
+            bootstrap.generateAPIKey: true
+        documentIndex: 1
+        asserts:
+            -   contains:
+                    path: rules[0].resources
+                    content: secrets
+            -   contains:
+                    path: rules[0].verbs
+                    content: create
