@@ -244,6 +244,36 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 {{- end -}}
 {{- end -}}
 
+{{- define "netbird.commonEnv" -}}
+-   name: AUTH_AUDIENCE
+    value: {{ .Values.config.auth.audience | quote }}
+-   name: AUTH_CLIENT_ID
+    value: {{ .Values.config.auth.client_id | quote }}
+-   name: AUTH_CLIENT_SECRET
+    {{- if .Values.config.auth.client_secret.secret }}
+    valueFrom:
+        secretKeyRef:
+            name: {{ .Values.config.auth.client_secret.secret }}
+            key: secret
+    {{- else }}
+    value: {{ default "" .Values.config.auth.client_secret.value | quote }}
+    {{- end }}
+{{- if .Values.config.auth.token_source }}
+-   name: NETBIRD_TOKEN_SOURCE
+    value: {{ .Values.config.auth.token_source | quote }}
+{{- end }}
+-   name: AUTH_AUTHORITY
+    value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
+-   name: USE_AUTH0
+    value: {{ .Values.config.auth.use_auth0 | quote }}
+-   name: AUTH_SUPPORTED_SCOPES
+    value: {{ join " " .Values.config.auth.supported_scopes | quote }}
+-   name: AUTH_REDIRECT_URI
+    value: {{ .Values.config.auth.redirect_uri | quote }}
+-   name: AUTH_SILENT_REDIRECT_URI
+    value: {{ .Values.config.auth.silent_redirect_uri | quote }}
+{{- end -}}
+
 {{- define "netbird.serverEnv" -}}
 {{- if ne (include "netbird.databaseMode" .) "sqlite" -}}
 -   name: NETBIRD_DATABASE_PASSWORD

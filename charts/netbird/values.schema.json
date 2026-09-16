@@ -163,6 +163,9 @@
                         },
                         "silent_redirect_uri": {
                             "type": "string"
+                        },
+                        "token_source": {
+                            "type": "string"
                         }
                     },
                     "additionalProperties": false

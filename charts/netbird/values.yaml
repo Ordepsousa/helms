@@ -30,6 +30,7 @@ config:
             - groups
         redirect_uri: /nb-auth
         silent_redirect_uri: /nb-silent-auth
+        token_source: ""
 
 
 # -- HTTP Ingress exposure. Disabled when Gateway API is enabled.
