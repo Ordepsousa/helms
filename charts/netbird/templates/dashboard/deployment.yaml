@@ -35,7 +35,7 @@ spec:
                         -   name: http
                             containerPort: {{ .Values.dashboard.service.port }}
                             protocol: TCP
-                    env: {{- include "netbird.commonEnv" . | nindent 24 }}
+                    env: {{- include "netbird.dashboardEnv" . | nindent 24 }}
                         -   name: NETBIRD_MGMT_API_ENDPOINT
                             value: "https://{{ .Values.domain }}:443"
                         -   name: NETBIRD_MGMT_GRPC_API_ENDPOINT

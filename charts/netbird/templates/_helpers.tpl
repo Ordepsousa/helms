@@ -244,7 +244,7 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 {{- end -}}
 {{- end -}}
 
-{{- define "netbird.commonEnv" -}}
+{{- define "netbird.dashboardEnv" -}}
 -   name: AUTH_AUDIENCE
     value: {{ .Values.config.auth.audience | quote }}
 -   name: AUTH_CLIENT_ID

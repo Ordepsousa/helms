@@ -89,7 +89,6 @@ spec:
                         - "{{ . }}"
                         {{- end }}
                     env: {{- include "netbird.serverEnv" . | nindent 24 }}
-                        {{- include "netbird.commonEnv" . | nindent 24 }}
                         {{- range .Values.server.env -}}
                         -   name: {{ .name }}
                             {{- if hasKey . "valueFrom" -}}
