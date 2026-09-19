@@ -1,0 +1,117 @@
+# {{ .Name }}
+
+{{ .Description }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Overview
+
+{{ .Name }} consists of the following components:
+
+- **Core**: init, document consumer, scheduler, optional Apache Tika and Gotenberg
+- **WebServer**: Web UI
+- **Worker**: Processes background jobs with celery
+- **Database**: PostgreSQL for persistent storage
+- **Broker**: A Dragonfly broker for work dispatch
+
+Note: All the components can be configured for replicas except for core
+
+## Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.0+
+- A StorageClass, or existing PVCs
+- A secure secret key
+
+PostgreSQL and Dragonfly are bundled by default. Both can be disabled in favor of external services.
+
+> [!WARNING]
+> SQLite is supported for minimal installations, but requires the data persistent volume across workloads. It is **strongly discouraged** for production or multi-replica environments due to database
+locking and lack of high availability.
+
+## Installation
+
+Add the Helm repository:
+
+```bash
+helm repo add myrepo https://charts.example.com
+helm repo update
+```
+
+Install the chart:
+
+```bash
+helm install my-release myrepo/{{ .Name }}
+```
+
+## Configuration
+
+The following table lists the configurable parameters and their default values.
+
+{{ template "chart.valuesTable" . }}
+
+## Examples
+
+### Basic Installation
+
+```bash
+helm install my-app myrepo/{{ .Name }}
+```
+
+### Custom Configuration
+
+```bash
+helm install my-app myrepo/{{ .Name }} \
+  --set replicaCount=3 \
+  --set image.tag=v1.2.3 \
+  --set ingress.enabled=true
+```
+
+### Using a Values File
+
+Create a custom values file:
+
+```yaml
+replicaCount: 3
+
+image:
+  repository: myapp/app
+  tag: v1.2.3
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.example.com
+```
+
+Install with custom values:
+
+```bash
+helm install my-app myrepo/{{ .Name }} -f custom-values.yaml
+```
+
+## Upgrading
+
+```bash
+helm upgrade my-app myrepo/{{ .Name }} --version {{ .Version }}
+```
+
+## Uninstalling
+
+```bash
+helm uninstall my-app
+```
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
