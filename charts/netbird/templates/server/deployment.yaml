@@ -2,16 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
     name: {{ include "netbird.serverServiceName" . }}
-    labels:
-        {{- include "netbird.labels" . | nindent 8 }}
+    labels: {{- include "netbird.labels" . | nindent 8 }}
         app.kubernetes.io/component: server
 spec:
     replicas: {{ include "netbird.serverReplicaCount" . }}
     strategy:
         type: {{ include "netbird.serverStrategyType" . }}
     selector:
-        matchLabels:
-            {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 12 }}
+        matchLabels: {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 12 }}
     template:
         metadata:
             annotations:
@@ -19,17 +17,36 @@ spec:
                 {{- with .Values.server.podAnnotations }}
                 {{- toYaml . | nindent 16 }}
                 {{- end }}
-            labels:
-                {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 16 }}
+            labels: {{- include "netbird.componentSelectorLabels" (dict "root" . "component" "server") | nindent 16 }}
                 {{- with .Values.server.podLabels }}
                 {{- toYaml . | nindent 16 }}
                 {{- end }}
         spec:
             serviceAccountName: {{ include "netbird.serviceAccountName" . }}
-            securityContext:
-                {{- toYaml .Values.server.podSecurityContext | nindent 16 }}
-            {{- if and (ne (include "netbird.databaseMode" .) "sqlite") (include "netbird.databaseHost" .) (include "netbird.databasePort" .) }}
+            securityContext: {{- toYaml .Values.server.podSecurityContext | nindent 16 }}
+            {{- if or .Values.config.auth.owner.existingSecret (and (ne (include "netbird.databaseMode" .) "sqlite") (include "netbird.databaseHost" .) (include "netbird.databasePort" .)) }}
             initContainers:
+                {{- if .Values.config.auth.owner.existingSecret }}
+                -   name: init-config
+                    image: dibi/envsubst
+                    env:
+                        -   name: AUTH_OWNER_EMAIL
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ .Values.config.auth.owner.existingSecret }}
+                                    key: {{ .Values.config.auth.owner.emailKey }}
+                        -   name: AUTH_OWNER_PASSWORD
+                            valueFrom:
+                                secretKeyRef:
+                                    name: {{ .Values.config.auth.owner.existingSecret }}
+                                    key: {{ .Values.config.auth.owner.passwordKey }}
+                    volumeMounts:
+                        -   name: config
+                            mountPath: /processed
+                        -   name: config-template
+                            mountPath: /workdir
+                {{- end -}}
+                {{- if and (ne (include "netbird.databaseMode" .) "sqlite") (include "netbird.databaseHost" .) (include "netbird.databasePort" .) }}
                 -   name: wait-for-database
                     image: busybox:1.37.0
                     imagePullPolicy: IfNotPresent
@@ -58,7 +75,8 @@ spec:
                         limits:
                             cpu: 50m
                             memory: 64Mi
-              {{- end }}
+                {{- end -}}
+            {{- end }}
             containers:
                 -   name: {{ .Chart.Name }}
                     securityContext:
@@ -129,8 +147,7 @@ spec:
                         timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
                         failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
                     {{- end }}
-                    resources:
-                        {{ toYaml .Values.server.resources | nindent 24 }}
+                    resources: {{ toYaml .Values.server.resources | nindent 24 }}
                     volumeMounts:
                         -   name: data
                             mountPath: {{ .Values.server.persistence.mountPath | quote }}
@@ -141,12 +158,14 @@ spec:
                         {{ toYaml . | nindent 24 }}
                         {{- end }}
             volumes:
-                -   name: config
+                -   name: config-template
                     secret:
                         secretName: {{ include "netbird.configSecretName" . }}
                         items:
                             -   key: {{ if .Values.server.config.existingSecret }}{{ .Values.server.config.existingSecretKey | quote }}{{ else }}"config.yaml"{{ end }}
                                 path: config.yaml
+                -   name: config
+                    emptyDir: { }
                 -   name: data
                     {{- if .Values.server.persistence.existingClaim }}
                     persistentVolumeClaim:

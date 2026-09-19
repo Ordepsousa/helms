@@ -7,8 +7,6 @@ templates:
     - templates/dashboard/ingress.yaml
     - templates/server/service.yaml
     - templates/server/stun-service.yaml
-    - templates/bootstrap/job.yaml
-    - templates/bootstrap/rbac.yaml
 tests:
     -   it: deploys the server with configured replicas and strategy
         template: templates/server/deployment.yaml
@@ -221,50 +219,3 @@ tests:
             -   equal:
                     path: spec.ports[0].port
                     value: 3478
-
-    -   it: creates bootstrap job and RBAC when enabled
-        template: templates/bootstrap/job.yaml
-        set:
-            domain: netbird.example.com
-            server.authSecret: test-auth
-            bootstrap.enabled: true
-            bootstrap.createUser: true
-            bootstrap.generateAPIKey: true
-        asserts:
-            -   isKind:
-                    of: Job
-            -   equal:
-                    path: metadata.annotations["helm.sh/hook"]
-                    value: post-install,post-upgrade
-            -   equal:
-                    path: spec.template.spec.restartPolicy
-                    value: OnFailure
-
-    -   it: does not create bootstrap job when user creation is disabled
-        template: templates/bootstrap/job.yaml
-        set:
-            domain: netbird.example.com
-            server.authSecret: test-auth
-            bootstrap.enabled: true
-            bootstrap.createUser: false
-            bootstrap.generateAPIKey: true
-        asserts:
-            -   hasDocuments:
-                    count: 0
-
-    -   it: creates bootstrap role permissions for secrets
-        template: templates/bootstrap/rbac.yaml
-        set:
-            domain: netbird.example.com
-            server.authSecret: test-auth
-            bootstrap.enabled: true
-            bootstrap.createUser: true
-            bootstrap.generateAPIKey: true
-        documentIndex: 1
-        asserts:
-            -   contains:
-                    path: rules[0].resources
-                    content: secrets
-            -   contains:
-                    path: rules[0].verbs
-                    content: create

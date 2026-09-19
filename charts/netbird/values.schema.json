@@ -12,8 +12,7 @@
         "dashboard",
         "metrics",
         "probes",
-        "postgresql",
-        "bootstrap"
+        "postgresql"
     ],
     "properties": {
         "nameOverride": {
@@ -81,9 +80,6 @@
         },
         "postgresql": {
             "$ref": "#/definitions/postgresql"
-        },
-        "bootstrap": {
-            "$ref": "#/definitions/bootstrap"
         }
     },
     "allOf": [
@@ -132,10 +128,10 @@
                         "audience": {
                             "type": "string"
                         },
-                        "client_id": {
+                        "clientId": {
                             "type": "string"
                         },
-                        "client_secret": {
+                        "clientSecret": {
                             "type": "object",
                             "properties": {
                                 "value": {
@@ -149,23 +145,44 @@
                         "authority": {
                             "type": "string"
                         },
-                        "use_auth0": {
+                        "useAuth0": {
                             "type": "boolean"
                         },
-                        "supported_scopes": {
+                        "supportedScopes": {
                             "type": "array",
                             "items": {
                                 "type": "string"
                             }
                         },
-                        "redirect_uri": {
+                        "redirectUri": {
                             "type": "string"
                         },
-                        "silent_redirect_uri": {
+                        "silentRedirectUri": {
                             "type": "string"
                         },
-                        "token_source": {
+                        "tokenSource": {
                             "type": "string"
+                        },
+                        "owner": {
+                            "type": "object",
+                            "properties": {
+                                "email": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "emailKey": {
+                                    "type": "string"
+                                },
+                                "passwordKey": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false
                         }
                     },
                     "additionalProperties": false
@@ -642,139 +659,6 @@
                 }
             },
             "additionalProperties": true
-        },
-        "bootstrap": {
-            "type": "object",
-            "required": [
-                "enabled",
-                "createUser",
-                "generateAPIKey",
-                "apiKeySecretName",
-                "existingCredentialsSecret",
-                "credentials",
-                "image",
-                "serviceAccount",
-                "jobAnnotations",
-                "backoffLimit",
-                "resources"
-            ],
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "createUser": {
-                    "type": "boolean"
-                },
-                "generateAPIKey": {
-                    "type": "boolean"
-                },
-                "apiKeySecretName": {
-                    "type": "string"
-                },
-                "existingCredentialsSecret": {
-                    "type": "string"
-                },
-                "credentials": {
-                    "type": "object",
-                    "required": [
-                        "email",
-                        "name",
-                        "password",
-                        "emailKey",
-                        "nameKey",
-                        "passwordKey"
-                    ],
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "password": {
-                            "type": "string"
-                        },
-                        "emailKey": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "nameKey": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "passwordKey": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "image": {
-                    "type": "object",
-                    "required": [
-                        "repository",
-                        "tag",
-                        "pullPolicy"
-                    ],
-                    "properties": {
-                        "repository": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "tag": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "pullPolicy": {
-                            "type": "string",
-                            "enum": [
-                                "Always",
-                                "IfNotPresent",
-                                "Never"
-                            ]
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "serviceAccount": {
-                    "type": "object",
-                    "required": [
-                        "create",
-                        "name",
-                        "annotations"
-                    ],
-                    "properties": {
-                        "create": {
-                            "type": "boolean"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "annotations": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "additionalProperties": false
-                },
-                "jobAnnotations": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "backoffLimit": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "resources": {
-                    "type": "object",
-                    "additionalProperties": true
-                }
-            },
-            "additionalProperties": false
         },
         "strategy": {
             "type": "object",

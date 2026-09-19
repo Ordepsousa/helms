@@ -16,21 +16,28 @@ config:
     # -- Auth related
     auth:
         audience: netbird-dashboard
-        client_id: netbird-dashboard
-        client_secret:
+        clientId: netbird-dashboard
+        clientSecret:
             value: ""
             secret: ""
         # -- if empty it uses https://{{ .Values.domain }}/oauth2
         authority: ""
-        use_auth0: false
-        supported_scopes:
+        useAuth0: false
+        supportedScopes:
             - openid
             - profile
             - email
             - groups
-        redirect_uri: /nb-auth
-        silent_redirect_uri: /nb-silent-auth
-        token_source: ""
+        redirectUri: /nb-auth
+        silentRedirectUri: /nb-silent-auth
+        tokenSource: ""
+        # -- initial admin account
+        owner:
+            email: ""
+            password: ""
+            existingSecret: ""
+            emailKey: "email"
+            passwordKey: "password"
 
 
 # -- HTTP Ingress exposure. Disabled when Gateway API is enabled.
@@ -356,46 +363,3 @@ postgresql:
             limits:
                 cpu: 500m
                 memory: 512Mi
-
-# -- Optional first-user and personal API token bootstrap Job.
-bootstrap:
-    # -- Enable bootstrap credentials, setup PAT support and the Job.
-    enabled: false
-    # -- Create the first NetBird user through /api/setup. Must be true for the current PAT flow.
-    createUser: true
-    # -- Generate and persist a personal API token. Must be true with createUser for the Job to run.
-    generateAPIKey: true
-    # -- Secret name receiving the generated token. Empty uses <fullname>-mgmt-api-key.
-    apiKeySecretName: ""
-    # -- Existing Secret containing bootstrap credentials. Keys are configured below.
-    existingCredentialsSecret: ""
-    # -- Credentials used only when existingCredentialsSecret is empty. Prefer an external Secret in production.
-    credentials:
-        email: ""
-        name: ""
-        password: ""
-        emailKey: email
-        nameKey: name
-        passwordKey: password
-    # -- Job image. It must provide apk, curl, jq and kubectl.
-    image:
-        repository: alpine/k8s
-        tag: "1.31.0"
-        pullPolicy: IfNotPresent
-    # -- Dedicated bootstrap ServiceAccount settings.
-    serviceAccount:
-        create: true
-        name: ""
-        annotations: { }
-    # -- Job annotations.
-    jobAnnotations: { }
-    # -- Maximum Job retries.
-    backoffLimit: 5
-    # -- Job resource requests/limits.
-    resources:
-        requests:
-            cpu: 10m
-            memory: 32Mi
-        limits:
-            cpu: 100m
-            memory: 128Mi

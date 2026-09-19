@@ -248,30 +248,30 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 -   name: AUTH_AUDIENCE
     value: {{ .Values.config.auth.audience | quote }}
 -   name: AUTH_CLIENT_ID
-    value: {{ .Values.config.auth.client_id | quote }}
+    value: {{ .Values.config.auth.clientId | quote }}
 -   name: AUTH_CLIENT_SECRET
-    {{- if .Values.config.auth.client_secret.secret }}
+    {{- if .Values.config.auth.clientSecret.secret }}
     valueFrom:
         secretKeyRef:
-            name: {{ .Values.config.auth.client_secret.secret }}
+            name: {{ .Values.config.auth.clientSecret.secret }}
             key: secret
     {{- else }}
-    value: {{ default "" .Values.config.auth.client_secret.value | quote }}
+    value: {{ default "" .Values.config.auth.clientSecret.value | quote }}
     {{- end }}
-{{- if .Values.config.auth.token_source }}
+{{- if .Values.config.auth.tokenSource }}
 -   name: NETBIRD_TOKEN_SOURCE
-    value: {{ .Values.config.auth.token_source | quote }}
+    value: {{ .Values.config.auth.tokenSource | quote }}
 {{- end }}
 -   name: AUTH_AUTHORITY
     value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
 -   name: USE_AUTH0
-    value: {{ .Values.config.auth.use_auth0 | quote }}
+    value: {{ .Values.config.auth.useAuth0 | quote }}
 -   name: AUTH_SUPPORTED_SCOPES
-    value: {{ join " " .Values.config.auth.supported_scopes | quote }}
+    value: {{ join " " .Values.config.auth.supportedScopes | quote }}
 -   name: AUTH_REDIRECT_URI
-    value: {{ .Values.config.auth.redirect_uri | quote }}
+    value: {{ .Values.config.auth.redirectUri | quote }}
 -   name: AUTH_SILENT_REDIRECT_URI
-    value: {{ .Values.config.auth.silent_redirect_uri | quote }}
+    value: {{ .Values.config.auth.silentRedirectUri | quote }}
 {{- end -}}
 
 {{- define "netbird.serverEnv" -}}
@@ -283,10 +283,6 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
             key: {{ include "netbird.databasePasswordSecretKey" . }}
 -   name: {{ include "netbird.storeDsnEnvName" . }}
     value: {{ include "netbird.storeDsnTemplate" . | quote }}
-{{- end -}}
-{{- if .Values.bootstrap.enabled }}
--   name: NB_SETUP_PAT_ENABLED
-    value: "true"
 {{- end -}}
 {{- end -}}
 
@@ -322,24 +318,4 @@ Create the name of the service account to use
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
-{{- end -}}
-
-{{- define "netbird.bootstrapServiceAccountName" -}}
-{{- if .Values.bootstrap.serviceAccount.create -}}
-{{- default (printf "%s-bootstrap" (include "netbird.fullname" .)) .Values.bootstrap.serviceAccount.name -}}
-{{- else -}}
-{{- default "default" .Values.bootstrap.serviceAccount.name -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "netbird.bootstrapApiKeySecretName" -}}
-{{- default (printf "%s-mgmt-api-key" (include "netbird.fullname" .)) .Values.bootstrap.apiKeySecretName -}}
-{{- end -}}
-
-{{- define "netbird.bootstrapCredentialsSecretName" -}}
-{{- if .Values.bootstrap.existingCredentialsSecret -}}
-{{- .Values.bootstrap.existingCredentialsSecret -}}
-{{- else -}}
-{{- printf "%s-bootstrap-credentials" (include "netbird.fullname" .) -}}
-{{- end -}}
 {{- end -}}
