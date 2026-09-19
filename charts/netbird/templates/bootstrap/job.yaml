@@ -46,10 +46,8 @@ spec:
                     args:
                         - |
                             set -eu
-                            apk add --no-cache curl jq kubectl
 
                             SERVER_URL="http://{{ include "netbird.serverServiceName" . }}"
-                            DASHBOARD_URL="http://{{ include "netbird.dashboardServiceName" . }}"
                             API_SECRET="{{ include "netbird.bootstrapApiKeySecretName" . }}"
 
                             echo "Waiting for NetBird server..."
