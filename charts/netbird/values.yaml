@@ -379,8 +379,8 @@ bootstrap:
         passwordKey: password
     # -- Job image. It must provide apk, curl, jq and kubectl.
     image:
-        repository: alpine
-        tag: "3.20"
+        repository: alpine/k8s
+        tag: "1.31.0"
         pullPolicy: IfNotPresent
     # -- Dedicated bootstrap ServiceAccount settings.
     serviceAccount:
