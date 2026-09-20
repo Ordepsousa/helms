@@ -97,8 +97,8 @@ NetBird STUN service name.
 NetBird config secret name.
 */}}
 {{- define "netbird.configSecretName" -}}
-{{- if .Values.server.config.existingSecret -}}
-{{- .Values.server.config.existingSecret -}}
+{{- if .Values.config.existingSecret -}}
+{{- .Values.config.existingSecret -}}
 {{- else -}}
 {{- printf "%s-config" (include "netbird.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
@@ -109,14 +109,52 @@ NetBird config secret name.
 Required public domain.
 */}}
 {{- define "netbird.domain" -}}
-{{- required "domain is required" .Values.domain -}}
+{{- required "config.domain is required" .Values.config.domain -}}
 {{- end -}}
 
-{{/*
-Required server authentication secret.
-*/}}
+{{/* Required server config auth secret */}}
 {{- define "netbird.authSecret" -}}
-{{- required "server.authSecret is required" .Values.server.authSecret -}}
+    {{- if .Values.config.authSecret.existingSecret -}}
+        {{- print "${AUTH_SECRET}" -}}
+    {{- else -}}
+        {{- required "config.authSecret is required" .Values.config.authSecret.value -}}
+    {{- end -}}
+{{- end -}}
+
+{{/* server config auth.issuer */}}
+{{- define "netbird.authIssuer" -}}
+    {{- if .Values.config.auth.authority -}}
+        {{- .Values.config.auth.authority | quote -}}
+    {{- else -}}
+        "https://{{ include "netbird.domain" . }}/oauth2"
+    {{- end -}}
+{{- end -}}
+
+{{/* server config auth.owner.email */}}
+{{- define "netbird.authOwnerEmail" -}}
+    {{- if .Values.config.auth.owner.existingSecret -}}
+        {{- print "${AUTH_OWNER_EMAIL}" -}}
+    {{- else -}}
+        {{- .Values.config.auth.owner.email -}}
+    {{- end -}}
+{{- end -}}
+
+{{/* server config auth.owner.password */}}
+{{- define "netbird.authOwnerPassword" -}}
+    {{- if .Values.config.auth.owner.existingSecret -}}
+        {{- print "${AUTH_OWNER_PASSWORD}" -}}
+    {{- else -}}
+        {{- .Values.config.auth.owner.password -}}
+    {{- end -}}
+{{- end -}}
+
+{{/* server config store.encryptionKey */}}
+{{- define "netbird.storeEncryptionKey" -}}
+    {{- if .Values.config.store.encryptionKey.existingSecret -}}
+        {{- print "${DATASTORE_ENCRYPTION_KEY}" -}}
+    {{- else -}}
+        {{- required "config.store.encryptionKey is required" .Values.config.store.encryptionKey.value -}}
+    {{- end -}}
 {{- end -}}
 
 {{/*
@@ -248,30 +286,30 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 -   name: AUTH_AUDIENCE
     value: {{ .Values.config.auth.audience | quote }}
 -   name: AUTH_CLIENT_ID
-    value: {{ .Values.config.auth.client_id | quote }}
+    value: {{ .Values.config.auth.clientId | quote }}
 -   name: AUTH_CLIENT_SECRET
-    {{- if .Values.config.auth.client_secret.secret }}
+    {{- if .Values.config.auth.clientSecret.existingSecret }}
     valueFrom:
         secretKeyRef:
-            name: {{ .Values.config.auth.client_secret.secret }}
-            key: secret
+            name: {{ .Values.config.auth.clientSecret.existingSecret }}
+            key: {{ .Values.config.auth.clientSecret.existingSecretKey }}
     {{- else }}
-    value: {{ default "" .Values.config.auth.client_secret.value | quote }}
+    value: {{ default "" .Values.config.auth.clientSecret.value | quote }}
     {{- end }}
-{{- if .Values.config.auth.token_source }}
+{{- if .Values.config.auth.tokenSource }}
 -   name: NETBIRD_TOKEN_SOURCE
-    value: {{ .Values.config.auth.token_source | quote }}
+    value: {{ .Values.config.auth.tokenSource | quote }}
 {{- end }}
 -   name: AUTH_AUTHORITY
     value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
 -   name: USE_AUTH0
-    value: {{ .Values.config.auth.use_auth0 | quote }}
+    value: {{ .Values.config.auth.useAuth0 | quote }}
 -   name: AUTH_SUPPORTED_SCOPES
-    value: {{ join " " .Values.config.auth.supported_scopes | quote }}
+    value: {{ join " " .Values.config.auth.supportedScopes | quote }}
 -   name: AUTH_REDIRECT_URI
-    value: {{ .Values.config.auth.redirect_uri | quote }}
+    value: {{ .Values.config.auth.redirectUri | quote }}
 -   name: AUTH_SILENT_REDIRECT_URI
-    value: {{ .Values.config.auth.silent_redirect_uri | quote }}
+    value: {{ .Values.config.auth.silentRedirectUri | quote }}
 {{- end -}}
 
 {{- define "netbird.serverEnv" -}}

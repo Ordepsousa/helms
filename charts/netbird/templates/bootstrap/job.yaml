@@ -3,8 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
     name: {{ include "netbird.fullname" . }}-bootstrap
-    labels:
-        {{- include "netbird.labels" . | nindent 8 }}
+    labels: {{- include "netbird.labels" . | nindent 8 }}
         app.kubernetes.io/component: bootstrap
     annotations:
         "helm.sh/hook": post-install,post-upgrade
@@ -16,8 +15,7 @@ spec:
     backoffLimit: {{ .Values.bootstrap.backoffLimit }}
     template:
         metadata:
-            labels:
-                {{- include "netbird.labels" . | nindent 16 }}
+            labels: {{- include "netbird.labels" . | nindent 16 }}
                 app.kubernetes.io/component: bootstrap
         spec:
             serviceAccountName: {{ include "netbird.bootstrapServiceAccountName" . }}

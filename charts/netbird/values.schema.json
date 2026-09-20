@@ -3,8 +3,7 @@
     "type": "object",
     "additionalProperties": false,
     "required": [
-        "domain",
-        "trustedHTTPProxies",
+        "config",
         "ingress",
         "gateway",
         "serviceAccount",
@@ -28,16 +27,6 @@
             "type": "object",
             "additionalProperties": {
                 "type": "string"
-            }
-        },
-        "domain": {
-            "type": "string"
-        },
-        "trustedHTTPProxies": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "minLength": 1
             }
         },
         "config": {
@@ -123,52 +112,205 @@
         "config": {
             "type": "object",
             "required": [
-                "auth"
+                "domain",
+                "authSecret",
+                "auth",
+                "store"
             ],
             "properties": {
+                "existingSecret": {
+                    "type": "string"
+                },
+                "existingSecretKey": {
+                    "type": "string"
+                },
+                "domain": {
+                    "type": "string"
+                },
+                "trustedHTTPProxies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "authSecret": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "existingSecret": {
+                            "type": "string"
+                        },
+                        "existingSecretKey": {
+                            "type": "string"
+                        }
+                    },
+                    "allOf": [
+                        {
+                            "if": {
+                                "properties": {
+                                    "value": {
+                                        "const": ""
+                                    }
+                                }
+                            },
+                            "then": {
+                                "properties": {
+                                    "existingSecret": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
                 "auth": {
                     "type": "object",
                     "properties": {
                         "audience": {
                             "type": "string"
                         },
-                        "client_id": {
+                        "clientId": {
                             "type": "string"
                         },
-                        "client_secret": {
+                        "clientSecret": {
                             "type": "object",
                             "properties": {
                                 "value": {
                                     "type": "string"
                                 },
-                                "secret": {
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "existingSecretKey": {
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "allOf": [
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "value": {
+                                                "const": ""
+                                            }
+                                        }
+                                    },
+                                    "then": {
+                                        "properties": {
+                                            "existingSecret": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         },
                         "authority": {
                             "type": "string"
                         },
-                        "use_auth0": {
+                        "useAuth0": {
                             "type": "boolean"
                         },
-                        "supported_scopes": {
+                        "supportedScopes": {
                             "type": "array",
                             "items": {
                                 "type": "string"
                             }
                         },
-                        "redirect_uri": {
+                        "redirectUri": {
                             "type": "string"
                         },
-                        "silent_redirect_uri": {
+                        "silentRedirectUri": {
                             "type": "string"
                         },
-                        "token_source": {
+                        "tokenSource": {
                             "type": "string"
+                        },
+                        "owner": {
+                            "type": "object",
+                            "properties": {
+                                "email": {
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "existingSecretEmailKey": {
+                                    "type": "string"
+                                },
+                                "existingSecretPasswordKey": {
+                                    "type": "string"
+                                }
+                            },
+                            "allOf": [
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "email": {
+                                                "const": ""
+                                            },
+                                            "password": {
+                                                "const": ""
+                                            }
+                                        }
+                                    },
+                                    "then": {
+                                        "properties": {
+                                            "existingSecret": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "additionalProperties": false
+                },
+                "store": {
+                    "type": "object",
+                    "properties": {
+                        "encryptionKey": {
+                            "type": "object",
+                            "properties": {
+                                "value": {
+                                    "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string"
+                                },
+                                "existingSecretKey": {
+                                    "type": "string"
+                                }
+                            },
+                            "allOf": [
+                                {
+                                    "if": {
+                                        "properties": {
+                                            "value": {
+                                                "const": ""
+                                            }
+                                        }
+                                    },
+                                    "then": {
+                                        "properties": {
+                                            "existingSecret": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "extraYaml": {
+                    "type": "string"
                 }
             },
             "additionalProperties": false
@@ -474,8 +616,6 @@
                         "services",
                         "database",
                         "persistence",
-                        "authSecret",
-                        "config",
                         "probes"
                     ],
                     "properties": {
@@ -503,9 +643,6 @@
                         },
                         "persistence": {
                             "$ref": "#/definitions/persistence"
-                        },
-                        "authSecret": {
-                            "type": "string"
                         },
                         "probes": {
                             "type": "object",
@@ -542,26 +679,6 @@
                         }
                     },
                     "allOf": [
-                        {
-                            "if": {
-                                "properties": {
-                                    "config": {
-                                        "properties": {
-                                            "existingSecret": {
-                                                "const": ""
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            "then": {
-                                "properties": {
-                                    "authSecret": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        },
                         {
                             "if": {
                                 "properties": {

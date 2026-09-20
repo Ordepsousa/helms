@@ -5,33 +5,59 @@ fullnameOverride: ""
 # -- Additional labels applied to chart resources and workload Pods.
 commonLabels: { }
 
-# -- Public DNS name used by NetBird, OAuth redirects and Gateway routes.
-domain: ""
-# -- CIDRs of reverse proxies whose forwarded headers NetBird may trust.
-trustedHTTPProxies: [ ]
-# - "0.0.0.0/0"
-
 # -- Configuration for Netbird
 config:
+    # -- Existing Secret containing the complete server config.yaml.
+    existingSecret: ""
+    # -- Key in existingSecret containing the configuration.
+    existingSecretKey: config.yaml
+
+    # -- Public DNS name used by NetBird, OAuth redirects and Gateway routes.
+    domain: ""
+    # -- CIDRs of reverse proxies whose forwarded headers NetBird may trust.
+    trustedHTTPProxies: [ ]
+    # - "0.0.0.0/0"
+
+    # -- NetBird authentication secret. Required for generated configuration.
+    authSecret:
+        value: "" # openssl rand -base64 32
+        existingSecret: ""
+        existingSecretKey: authSecret
+
     # -- Auth related
     auth:
         audience: netbird-dashboard
-        client_id: netbird-dashboard
-        client_secret:
+        clientId: netbird-dashboard
+        clientSecret:
             value: ""
-            secret: ""
+            existingSecret: ""
+            existingSecretKey: clientSecret
         # -- if empty it uses https://{{ .Values.domain }}/oauth2
         authority: ""
-        use_auth0: false
-        supported_scopes:
+        useAuth0: false
+        supportedScopes:
             - openid
             - profile
             - email
             - groups
-        redirect_uri: /nb-auth
-        silent_redirect_uri: /nb-silent-auth
-        token_source: ""
+        redirectUri: /nb-auth
+        silentRedirectUri: /nb-silent-auth
+        tokenSource: ""
+        owner:
+            email: ""
+            password: ""
+            existingSecret: ""
+            existingSecretEmailKey: email
+            existingSecretPasswordKey: password
 
+    store:
+        encryptionKey:
+            value: "" # openssl rand -base64 32
+            existingSecret: ""
+            existingSecretKey: dataStoreEncryptionKey
+
+    # -- Additional YAML merged into generated configuration.
+    extraYaml: ""
 
 # -- HTTP Ingress exposure. Disabled when Gateway API is enabled.
 ingress:
@@ -183,9 +209,6 @@ server:
             # -- Raw database DSN. Takes precedence over host and credentials.
             dsn: ""
 
-    # -- NetBird authentication secret. Required for generated configuration.
-    authSecret: '' # openssl rand -base64 32
-
     # -- Additional environment variables.
     env: [ ]
     # -- Additional envFrom sources such as Secret or ConfigMap references.
@@ -194,14 +217,6 @@ server:
     probes:
         # -- Enable NetBird server health probes.
         enabled: true
-    # -- Server configuration Secret settings.
-    config:
-        # -- Existing Secret containing the complete server config.yaml.
-        existingSecret: ""
-        # -- Key in existingSecret containing the configuration.
-        existingSecretKey: config.yaml
-        # -- Additional YAML merged into generated configuration.
-        extraYaml: ""
 
     # -- Additional server volumes.
     extraVolumes: [ ]
