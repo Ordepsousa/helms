@@ -301,7 +301,7 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
     value: {{ .Values.config.auth.tokenSource | quote }}
 {{- end }}
 -   name: AUTH_AUTHORITY
-    value: {{ default (printf "https://%s/oauth2" .Values.domain) .Values.config.auth.authority | quote }}
+    value: {{ default (printf "https://%s/oauth2" .Values.config.domain) .Values.config.auth.authority | quote }}
 -   name: USE_AUTH0
     value: {{ .Values.config.auth.useAuth0 | quote }}
 -   name: AUTH_SUPPORTED_SCOPES

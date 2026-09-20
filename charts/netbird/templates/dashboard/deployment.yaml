@@ -37,9 +37,9 @@ spec:
                             protocol: TCP
                     env: {{- include "netbird.dashboardEnv" . | nindent 24 }}
                         -   name: NETBIRD_MGMT_API_ENDPOINT
-                            value: "https://{{ .Values.domain }}:443"
+                            value: "https://{{ .Values.config.domain }}:443"
                         -   name: NETBIRD_MGMT_GRPC_API_ENDPOINT
-                            value: "https://{{ .Values.domain }}:443"
+                            value: "https://{{ .Values.config.domain }}:443"
                         -   name: NGINX_SSL_PORT
                             value: "443"
                         -   name: LETSENCRYPT_DOMAIN
