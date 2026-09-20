@@ -124,9 +124,9 @@ Required public domain.
 {{/* server config auth.issuer */}}
 {{- define "netbird.authIssuer" -}}
     {{- if .Values.config.auth.authority -}}
-        {{- .Values.config.auth.authority | quote -}}
+        {{- .Values.config.auth.authority -}}
     {{- else -}}
-        "https://{{ include "netbird.domain" . }}/oauth2"
+        {{- printf "https://%s/oauth2" (include "netbird.domain" .) -}}
     {{- end -}}
 {{- end -}}
 
