@@ -3,7 +3,7 @@ name: netbird
 description: A Helm chart to deploy self-hosted NetBird
 type: application
 version: 1.4.1
-appVersion: "0.77.0"
+appVersion: "0.79.0"
 dependencies:
     -   name: postgresql
         version: 18.8.13
