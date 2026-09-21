@@ -244,7 +244,7 @@ dashboard:
         # -- Kubernetes image pull policy.
         pullPolicy: IfNotPresent
         # -- Image tag.
-        tag: "v2.90.10"
+        tag: "v2.92.0"
         # -- Optional immutable image digest.
         digest: ""
 
