@@ -103,8 +103,9 @@ spec:
                 {{- if .Values.webserver.extraVolumes }}
                 {{- include "common.tplvalues.render" ( dict "value" .Values.webserver.extraVolumes "context" $ ) | nindent 16 }}
                 {{- end }}
-            {{- if .Values.webserver.affinity }}
-            affinity: {{- include "common.tplvalues.render" (dict "value" .Values.webserver.affinity "context" $) | nindent 16 }}
+            {{- $affinity := include "paperless.affinity" (dict "component" "webserver" "context" $) | fromYaml }}
+            {{- if $affinity }}
+            affinity: {{- include "common.tplvalues.render" (dict "value" $affinity "context" $) | nindent 16 }}
             {{- end }}
             {{- if .Values.webserver.nodeSelector }}
             nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.webserver.nodeSelector "context" $) | nindent 16 }}

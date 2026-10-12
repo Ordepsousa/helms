@@ -90,8 +90,9 @@ spec:
                 {{- if .Values.worker.extraVolumes }}
                 {{- include "common.tplvalues.render" ( dict "value" .Values.worker.extraVolumes "context" $ ) | nindent 16 }}
                 {{- end }}
-            {{- if .Values.worker.affinity }}
-            affinity: {{- include "common.tplvalues.render" (dict "value" .Values.worker.affinity "context" $) | nindent 16 }}
+            {{- $affinity := include "paperless.affinity" (dict "component" "worker" "context" $) | fromYaml }}
+            {{- if $affinity }}
+            affinity: {{- include "common.tplvalues.render" (dict "value" $affinity "context" $) | nindent 16 }}
             {{- end }}
             {{- if .Values.worker.nodeSelector }}
             nodeSelector: {{- include "common.tplvalues.render" (dict "value" .Values.worker.nodeSelector "context" $) | nindent 16 }}
