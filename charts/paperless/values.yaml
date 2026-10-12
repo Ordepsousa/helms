@@ -29,6 +29,9 @@ commonAnnotations: { }
 ## @param secretAnnotations Add annotations to the secrets
 ##
 secretAnnotations: { }
+## @param singleNode Keep every paperless Pod on the same node. auto pins the webserver and worker Pods to the core Pod's node when a shared volume (data, media or consume) uses a ReadWriteOnce access mode, which would otherwise fail to attach on a second node. Use always or never to force the behaviour
+##
+singleNode: auto
 ## Service account shared by the all Pods.
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
 ##

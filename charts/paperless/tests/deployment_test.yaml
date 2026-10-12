@@ -175,3 +175,76 @@ tests:
             -   equal:
                     path: spec.ports[0].port
                     value: 80
+
+    -   it: pins the webserver to the core node when a shared volume is ReadWriteOnce
+        template: templates/deployment-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   equal:
+                    path: spec.template.spec.affinity
+                    value:
+                        podAffinity:
+                            requiredDuringSchedulingIgnoredDuringExecution:
+                                -   labelSelector:
+                                        matchLabels:
+                                            app.kubernetes.io/name: paperless
+                                            app.kubernetes.io/instance: RELEASE-NAME
+                                            app.kubernetes.io/component: core
+                                    topologyKey: kubernetes.io/hostname
+
+    -   it: pins the worker to the core node when a shared volume is ReadWriteOnce
+        template: templates/deployment-worker.yaml
+        set:
+            config.secretKey: unit-test-secret
+        asserts:
+            -   equal:
+                    path: spec.template.spec.affinity
+                    value:
+                        podAffinity:
+                            requiredDuringSchedulingIgnoredDuringExecution:
+                                -   labelSelector:
+                                        matchLabels:
+                                            app.kubernetes.io/name: paperless
+                                            app.kubernetes.io/instance: RELEASE-NAME
+                                            app.kubernetes.io/component: core
+                                    topologyKey: kubernetes.io/hostname
+
+    -   it: does not pin pods when every shared volume is ReadWriteMany
+        template: templates/deployment-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+            persistence.data.accessModes:
+                - ReadWriteMany
+            persistence.media.accessModes:
+                - ReadWriteMany
+            persistence.consume.accessModes:
+                - ReadWriteMany
+        asserts:
+            -   notExists:
+                    path: spec.template.spec.affinity
+
+    -   it: always pins pods when singleNode is always
+        template: templates/deployment-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+            singleNode: always
+            persistence.data.accessModes:
+                - ReadWriteMany
+            persistence.media.accessModes:
+                - ReadWriteMany
+            persistence.consume.accessModes:
+                - ReadWriteMany
+        asserts:
+            -   equal:
+                    path: spec.template.spec.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey
+                    value: kubernetes.io/hostname
+
+    -   it: never pins pods when singleNode is never
+        template: templates/deployment-webserver.yaml
+        set:
+            config.secretKey: unit-test-secret
+            singleNode: never
+        asserts:
+            -   notExists:
+                    path: spec.template.spec.affinity

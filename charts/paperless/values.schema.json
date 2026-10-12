@@ -509,6 +509,10 @@
                 "type": "object"
             }
         },
+        "singleNode": {
+            "type": "string",
+            "enum": ["auto", "always", "never"]
+        },
         "nodeSelector": {
             "type": "object",
             "additionalProperties": {

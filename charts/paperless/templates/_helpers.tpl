@@ -359,3 +359,42 @@ without an external database configuration
         {{- include "common.tplvalues.render" (dict "value" .Values.waitForCore.extraVolumeMounts "context" $) | nindent 8 }}
         {{- end }}
 {{- end -}}
+
+{{/* whether every paperless Pod has to run on the same node (shared ReadWriteOnce volumes cannot be attached twice) */}}
+{{- define "paperless.singleNode" -}}
+    {{- $mode := default "auto" .Values.singleNode -}}
+    {{- if eq $mode "always" -}}
+        {{- print "true" -}}
+    {{- else if eq $mode "never" -}}
+        {{- print "false" -}}
+    {{- else -}}
+        {{- $single := false -}}
+        {{- range $name := (list "data" "media" "consume") -}}
+            {{- $item := index $.Values.persistence $name -}}
+            {{- if and $item.enabled (has "ReadWriteOnce" (default (list) $item.accessModes)) -}}
+                {{- $single = true -}}
+            {{- end -}}
+        {{- end -}}
+        {{- print $single -}}
+    {{- end -}}
+{{- end -}}
+
+{{/*
+Affinity for a component: the component affinity merged with a required podAffinity that pins
+the Pod to the core Pod's node when the shared volumes are ReadWriteOnce. The core Pod is left
+unconstrained and acts as the anchor (a self-referencing podAffinity would never schedule).
+*/}}
+{{- define "paperless.affinity" -}}
+    {{- $ctx := .context -}}
+    {{- $user := default (dict) (index $ctx.Values .component "affinity") -}}
+    {{- $sameNode := dict -}}
+    {{- if eq (include "paperless.singleNode" $ctx | trim) "true" -}}
+        {{- $selector := dict "matchLabels" (dict
+            "app.kubernetes.io/name" (include "common.names.name" $ctx)
+            "app.kubernetes.io/instance" $ctx.Release.Name
+            "app.kubernetes.io/component" "core") -}}
+        {{- $term := dict "labelSelector" $selector "topologyKey" "kubernetes.io/hostname" -}}
+        {{- $sameNode = dict "podAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (list $term)) -}}
+    {{- end -}}
+    {{- default "{}" (include "common.tplvalues.merge" (dict "values" (list $sameNode $user) "context" $ctx) | trim) -}}
+{{- end -}}
