@@ -1,4 +1,4 @@
-{{- if and .Values.bootstrap.enabled .Values.bootstrap.createUser .Values.bootstrap.generateAPIKey }}
+{{- if and .Values.bootstrap.enabled (eq (include "netbird.authOwnerConfigured" .) "true") }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -24,22 +24,7 @@ spec:
                 -   name: bootstrap
                     image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
                     imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
-                    env:
-                        -   name: NB_EMAIL
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
-                                    key: {{ .Values.bootstrap.credentials.emailKey }}
-                        -   name: NB_NAME
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
-                                    key: {{ .Values.bootstrap.credentials.nameKey }}
-                        -   name: NB_PASSWORD
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ include "netbird.bootstrapCredentialsSecretName" . }}
-                                    key: {{ .Values.bootstrap.credentials.passwordKey }}
+                    env: {{- include "netbird.authOwnerJobEnv" . | nindent 24 }}
                     command: [ "/bin/sh", "-c" ]
                     args:
                         - |
@@ -47,36 +32,93 @@ spec:
 
                             SERVER_URL="http://{{ include "netbird.serverServiceName" . }}"
                             API_SECRET="{{ include "netbird.bootstrapApiKeySecretName" . }}"
+                            ISSUER="${SERVER_URL}/oauth2"
+                            REDIRECT_URI="https://{{ include "netbird.domain" . }}/nb-auth"
+                            TOKEN_NAME="setup-token"
+                            TOKEN_EXPIRE_IN={{ .Values.bootstrap.tokenExpireIn }}
+
+                            urlencode() { jq -rn --arg v "$1" '$v|@uri'; }
+                            location_header() {
+                              sed -n 's/^[Ll]ocation: *//p' | tr -d '\r' | tail -n1
+                            }
+
+                            apk add --no-cache curl jq openssl >/dev/null
 
                             echo "Waiting for NetBird server..."
                             until curl -fsS "$SERVER_URL/api/instance" >/dev/null; do
                               sleep 3
                             done
 
-                            if kubectl get secret "$API_SECRET" >/dev/null 2>&1; then
-                              echo "API Secret already exists"
+                            if kubectl get secret "$API_SECRET" -o jsonpath='{.data.NB_API_KEY}' 2>/dev/null | grep -q .; then
+                              echo "API Secret already contains NB_API_KEY"
                               exit 0
                             fi
 
-                            payload=$(jq -n \
-                              --arg email "$NB_EMAIL" \
-                              --arg name "$NB_NAME" \
-                              --arg password "$NB_PASSWORD" \
-                              '{email: $email, name: $name, password: $password, create_pat: true, pat_expire_in: 30}')
+                            # Authenticate the owner through the embedded IdP without
+                            # creating a new account: the first API call below creates
+                            # the single account with the netbird.selfhosted domain.
+                            cookie_jar="$(mktemp)"
+                            verifier="$(openssl rand -hex 32)"
+                            challenge="$(printf '%s' "$verifier" | openssl dgst -binary -sha256 | openssl base64 | tr '+/' '-_' | tr -d '=')"
+                            state="$(openssl rand -hex 16)"
 
-                            response=$(curl -fsS -X POST "$SERVER_URL/api/setup" \
-                              -H "Content-Type: application/json" \
-                              -d "$payload")
-                            token=$(printf '%s' "$response" | jq -r '.personal_access_token // empty')
+                            login_location="$(curl -sS -o /dev/null -D - -c "$cookie_jar" \
+                              "${ISSUER}/auth/local?client_id=netbird-dashboard&response_type=code&scope=$(urlencode 'openid profile email')&redirect_uri=$(urlencode "$REDIRECT_URI")&state=${state}&code_challenge=${challenge}&code_challenge_method=S256" \
+                              | location_header)"
+                            auth_state="$(printf '%s' "$login_location" | sed -n 's/.*[?&]state=\([^&]*\).*/\1/p')"
+                            if [ -z "$auth_state" ]; then
+                              echo "Failed to start the owner authorization request." >&2
+                              printf '%s\n' "$login_location" >&2
+                              exit 1
+                            fi
 
+                            callback_location="$(curl -sS -o /dev/null -D - -b "$cookie_jar" -c "$cookie_jar" \
+                              --data-urlencode "login=${NB_EMAIL}" \
+                              --data-urlencode "password=${NB_PASSWORD}" \
+                              "${ISSUER}/auth/local/login?state=$(urlencode "$auth_state")" \
+                              | location_header)"
+                            code="$(printf '%s' "$callback_location" | sed -n 's/.*[?&]code=\([^&]*\).*/\1/p')"
+                            if [ -z "$code" ]; then
+                              echo "Failed to authenticate the owner. Check config.auth.owner credentials." >&2
+                              printf '%s\n' "$callback_location" >&2
+                              exit 1
+                            fi
+
+                            token="$(curl -fsS -X POST "${ISSUER}/token" \
+                              -d grant_type=authorization_code \
+                              --data-urlencode "code=${code}" \
+                              --data-urlencode "redirect_uri=${REDIRECT_URI}" \
+                              -d client_id=netbird-dashboard \
+                              --data-urlencode "code_verifier=${verifier}" \
+                              | jq -r '.access_token // empty')"
                             if [ -z "$token" ]; then
-                              echo "NetBird setup did not return a personal access token." >&2
-                              printf '%s\n' "$response" >&2
+                              echo "Failed to obtain an access token for the owner." >&2
+                              exit 1
+                            fi
+
+                            users="$(curl -fsS "${SERVER_URL}/api/users" -H "Authorization: Bearer ${token}")"
+                            user_id="$(printf '%s' "$users" | jq -r --arg email "$NB_EMAIL" '.[] | select(.email == $email) | .id' | head -n1)"
+                            if [ -z "$user_id" ]; then
+                              user_id="$(printf '%s' "$users" | jq -r '[.[] | select(.role == "owner" or .role == "admin")][0].id // empty')"
+                            fi
+                            if [ -z "$user_id" ]; then
+                              echo "Could not resolve the NetBird user for ${NB_EMAIL}." >&2
+                              printf '%s\n' "$users" >&2
+                              exit 1
+                            fi
+
+                            pat="$(curl -fsS -X POST "${SERVER_URL}/api/users/${user_id}/tokens" \
+                              -H "Authorization: Bearer ${token}" \
+                              -H "Content-Type: application/json" \
+                              -d "{\"name\":\"${TOKEN_NAME}\",\"expires_in\":${TOKEN_EXPIRE_IN}}" \
+                              | jq -r '.plain_token // empty')"
+                            if [ -z "$pat" ]; then
+                              echo "Failed to create the personal access token." >&2
                               exit 1
                             fi
 
                             kubectl create secret generic "$API_SECRET" \
-                              --from-literal=NB_API_KEY="$token" \
+                              --from-literal=NB_API_KEY="$pat" \
                               --dry-run=client -o yaml | kubectl apply -f -
                             echo "Bootstrap API key Secret updated."
                     resources:

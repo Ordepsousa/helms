@@ -49,11 +49,6 @@ spec:
                                 secretKeyRef:
                                     name: {{ .Values.config.auth.owner.existingSecret }}
                                     key: {{ .Values.config.auth.owner.existingSecretEmailKey }}
-                        -   name: AUTH_OWNER_PASSWORD
-                            valueFrom:
-                                secretKeyRef:
-                                    name: {{ .Values.config.auth.owner.existingSecret }}
-                                    key: {{ .Values.config.auth.owner.existingSecretPasswordKey }}
                         {{- end -}}
                     {{- end }}
                     volumeMounts:
@@ -61,6 +56,27 @@ spec:
                             mountPath: /processed
                         -   name: config-template
                             mountPath: /workdir
+                {{- if and (not .Values.config.existingSecret) (eq (include "netbird.authOwnerConfigured" .) "true") }}
+                -   name: init-owner-password-hash
+                    image: httpd:2.4-alpine
+                    imagePullPolicy: IfNotPresent
+                    command: [ "/bin/sh", "-ec" ]
+                    args:
+                        - |
+                            hash="$(htpasswd -bnBC 10 "" "$AUTH_OWNER_PASSWORD" | cut -d: -f2 | tr -d '\n' | sed 's|^\$2y\$|\$2a\$|')"
+                            sed -i "s|__NETBIRD_OWNER_PASSWORD_HASH__|${hash}|" /processed/config.yaml
+                    env: {{- include "netbird.authOwnerPasswordEnv" . | nindent 24 }}
+                    volumeMounts:
+                        -   name: config
+                            mountPath: /processed
+                    resources:
+                        requests:
+                            cpu: 10m
+                            memory: 16Mi
+                        limits:
+                            cpu: 50m
+                            memory: 64Mi
+                {{- end }}
                 {{- if and (ne (include "netbird.databaseMode" .) "sqlite") (include "netbird.databaseHost" .) (include "netbird.databasePort" .) }}
                 -   name: wait-for-database
                     image: busybox:1.37.0
