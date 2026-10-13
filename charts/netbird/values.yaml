@@ -43,11 +43,19 @@ config:
         redirectUri: /nb-auth
         silentRedirectUri: /nb-silent-auth
         tokenSource: ""
+        # -- Initial owner/admin user for the embedded IdP. The chart hashes the
+        # plaintext password with bcrypt before the server starts, so the value
+        # here is a normal password, not a pre-computed hash.
         owner:
+            # -- Owner email. The Dex local user is created on the first login.
             email: ""
+            # -- Owner plaintext password. Prefer existingSecret in production.
             password: ""
+            # -- Existing Secret containing the owner email and password.
             existingSecret: ""
+            # -- Key in existingSecret containing the owner email.
             existingSecretEmailKey: email
+            # -- Key in existingSecret containing the owner password.
             existingSecretPasswordKey: password
 
     store:
@@ -372,27 +380,15 @@ postgresql:
                 cpu: 500m
                 memory: 512Mi
 
-# -- Optional first-user and personal API token bootstrap Job.
+# -- Optional personal API token bootstrap Job.
 bootstrap:
-    # -- Enable bootstrap credentials, setup PAT support and the Job.
+    # -- Enable the Job that mints a personal API token for config.auth.owner.
     enabled: false
-    # -- Create the first NetBird user through /api/setup. Must be true for the current PAT flow.
-    createUser: true
-    # -- Generate and persist a personal API token. Must be true with createUser for the Job to run.
-    generateAPIKey: true
     # -- Secret name receiving the generated token. Empty uses <fullname>-mgmt-api-key.
     apiKeySecretName: ""
-    # -- Existing Secret containing bootstrap credentials. Keys are configured below.
-    existingCredentialsSecret: ""
-    # -- Credentials used only when existingCredentialsSecret is empty. Prefer an external Secret in production.
-    credentials:
-        email: ""
-        name: ""
-        password: ""
-        emailKey: email
-        nameKey: name
-        passwordKey: password
-    # -- Job image. It must provide apk, curl, jq and kubectl.
+    # -- Token lifetime in days.
+    tokenExpireIn: 30
+    # -- Job image. It must provide apk, curl, jq, openssl and kubectl.
     image:
         repository: alpine/k8s
         tag: "1.31.0"

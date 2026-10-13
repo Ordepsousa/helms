@@ -1,4 +1,4 @@
-{{- if and .Values.bootstrap.enabled .Values.bootstrap.createUser .Values.bootstrap.generateAPIKey }}
+{{- if and .Values.bootstrap.enabled (eq (include "netbird.authOwnerConfigured" .) "true") }}
 {{- if .Values.bootstrap.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount

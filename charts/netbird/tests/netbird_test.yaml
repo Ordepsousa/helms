@@ -232,15 +232,15 @@ tests:
                     path: spec.ports[0].port
                     value: 3478
 
-    -   it: creates bootstrap job and RBAC when enabled
+    -   it: creates bootstrap job when an owner is configured
         template: templates/bootstrap/job.yaml
         set:
             config.domain: netbird.example.com
             config.authSecret.value: test-auth
             config.store.encryptionKey.value: test-encryptionKey
+            config.auth.owner.email: admin@example.com
+            config.auth.owner.password: test-password
             bootstrap.enabled: true
-            bootstrap.createUser: true
-            bootstrap.generateAPIKey: true
         asserts:
             -   isKind:
                     of: Job
@@ -250,19 +250,39 @@ tests:
             -   equal:
                     path: spec.template.spec.restartPolicy
                     value: OnFailure
+            -   equal:
+                    path: spec.template.spec.containers[0].env[0].name
+                    value: NB_EMAIL
+            -   equal:
+                    path: spec.template.spec.containers[0].env[0].value
+                    value: admin@example.com
 
-    -   it: does not create bootstrap job when user creation is disabled
+    -   it: does not create bootstrap job when no owner is configured
         template: templates/bootstrap/job.yaml
         set:
             config.domain: netbird.example.com
             config.authSecret.value: test-auth
             config.store.encryptionKey.value: test-encryptionKey
             bootstrap.enabled: true
-            bootstrap.createUser: false
-            bootstrap.generateAPIKey: true
         asserts:
             -   hasDocuments:
                     count: 0
+
+    -   it: injects owner credentials into the bootstrap job from an existing secret
+        template: templates/bootstrap/job.yaml
+        set:
+            config.domain: netbird.example.com
+            config.authSecret.value: test-auth
+            config.store.encryptionKey.value: test-encryptionKey
+            config.auth.owner.existingSecret: my-owner-secret
+            bootstrap.enabled: true
+        asserts:
+            -   equal:
+                    path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+                    value: my-owner-secret
+            -   equal:
+                    path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.key
+                    value: password
 
     -   it: creates bootstrap role permissions for secrets
         template: templates/bootstrap/rbac.yaml
@@ -270,9 +290,9 @@ tests:
             config.domain: netbird.example.com
             config.authSecret.value: test-auth
             config.store.encryptionKey.value: test-encryptionKey
+            config.auth.owner.email: admin@example.com
+            config.auth.owner.password: test-password
             bootstrap.enabled: true
-            bootstrap.createUser: true
-            bootstrap.generateAPIKey: true
         documentIndex: 1
         asserts:
             -   contains:
@@ -281,3 +301,53 @@ tests:
             -   contains:
                     path: rules[0].verbs
                     content: create
+
+    -   it: hashes the owner password with an init container instead of storing plaintext
+        template: templates/server/secret.yaml
+        set:
+            config.domain: netbird.example.com
+            config.authSecret.value: test-auth
+            config.store.encryptionKey.value: test-encryptionKey
+            config.auth.owner.email: admin@example.com
+            config.auth.owner.password: test-password
+        asserts:
+            -   matchRegex:
+                    path: stringData["config.yaml"]
+                    pattern: 'password: "__NETBIRD_OWNER_PASSWORD_HASH__"'
+            -   notMatchRegex:
+                    path: stringData["config.yaml"]
+                    pattern: "test-password"
+
+    -   it: adds the bcrypt hashing init container for an inline owner password
+        template: templates/server/deployment.yaml
+        set:
+            config.domain: netbird.example.com
+            config.authSecret.value: test-auth
+            config.store.encryptionKey.value: test-encryptionKey
+            config.auth.owner.email: admin@example.com
+            config.auth.owner.password: test-password
+        asserts:
+            -   equal:
+                    path: spec.template.spec.initContainers[1].name
+                    value: init-owner-password-hash
+            -   equal:
+                    path: spec.template.spec.initContainers[1].env[0].name
+                    value: AUTH_OWNER_PASSWORD
+            -   equal:
+                    path: spec.template.spec.initContainers[1].env[0].value
+                    value: test-password
+
+    -   it: does not add the hashing init container without an owner
+        template: templates/server/deployment.yaml
+        set:
+            config.domain: netbird.example.com
+            config.authSecret.value: test-auth
+            config.store.encryptionKey.value: test-encryptionKey
+            postgresql.enabled: false
+        asserts:
+            -   equal:
+                    path: spec.template.spec.initContainers[0].name
+                    value: init-config
+            -   lengthEqual:
+                    path: spec.template.spec.initContainers
+                    count: 1

@@ -46,46 +46,61 @@ The complete parameter reference, including defaults and inline descriptions, is
 | `metrics` | Server metrics port and enablement. |
 | `probes` | Shared startup, liveness and readiness timing. |
 | `postgresql` | Values passed to the bundled Bitnami PostgreSQL subchart. |
-| `bootstrap` | Optional first-user creation and API token Job. |
+| `bootstrap` | Optional personal API token bootstrap Job. |
 
-## Bootstrap first user and API token
+## First user and API token
 
-Bootstrap is disabled by default. When enabled, the chart:
+The chart never creates the first user. Configure the initial owner/admin user
+under `config.auth.owner`; the embedded IdP creates that user on first login and
+the account is created with the `netbird.selfhosted` private domain. Users that
+authenticate through an external IdP (for example Authelia) then join the same
+account instead of triggering a separate tenant.
 
-1. Sets `NB_SETUP_PAT_ENABLED=true` on the server.
-2. Waits for the server and dashboard Services to respond.
-3. Calls `/api/setup` to create the first user and request a PAT.
-4. Stores the PAT as `NB_API_KEY` in the configured API key Secret.
+The chart hashes the plaintext owner password with bcrypt in an init container
+before the server starts, because NetBird's `server.auth.owner.password` field
+expects a bcrypt hash. The plaintext is therefore never written to the generated
+config Secret.
 
-The Job uses a dedicated ServiceAccount, Role and RoleBinding. Its Role can only update the pre-created API key Secret; it does not use the shared workload ServiceAccount.
+```yaml
+config:
+  auth:
+    owner:
+      email: admin@example.com
+      password: replace-with-a-password
+```
 
-The current flow requires both `createUser` and `generateAPIKey` to be true:
+For production, keep the owner password in an existing Secret:
+
+```yaml
+config:
+  auth:
+    owner:
+      existingSecret: netbird-owner
+      existingSecretEmailKey: email
+      existingSecretPasswordKey: password
+```
+
+Bootstrap is disabled by default. When enabled, a `post-install,post-upgrade` Job
+authenticates as the owner against the embedded IdP (authorization code flow with
+PKCE), performs the first authenticated API call to materialize the account with
+the correct domain, and stores a personal API token as `NB_API_KEY` in the
+configured Secret:
 
 ```yaml
 bootstrap:
   enabled: true
-  createUser: true
-  generateAPIKey: true
   apiKeySecretName: netbird-mgmt-api-key
-  credentials:
-    email: admin@example.com
-    name: NetBird Admin
-    password: replace-with-a-password
+  tokenExpireIn: 30
 ```
 
-For production, create the credentials Secret outside Helm and reference it:
+Requirements and notes:
 
-```yaml
-bootstrap:
-  enabled: true
-  existingCredentialsSecret: netbird-bootstrap-credentials
-  credentials:
-    emailKey: email
-    nameKey: name
-    passwordKey: password
-```
-
-The Job is configured as a `post-install,post-upgrade` Helm hook and skips token generation when the output Secret already contains `NB_API_KEY`. The default Job image installs `curl`, `jq` and `kubectl` from Alpine at runtime; pin or replace this image in restricted production environments.
+- `config.auth.owner` must be set (inline or through `existingSecret`), otherwise the Job is not created.
+- The Job relies on the embedded IdP local connector and does not work when `config.auth.localAuthDisabled` is enabled.
+- When `config.existingSecret` provides the whole server config, the chart cannot hash the owner password; store a bcrypt hash in that Secret instead of a plaintext password.
+- The Job skips token generation when the target Secret already contains `NB_API_KEY`.
+- The Job uses a dedicated ServiceAccount, Role and RoleBinding. Its Role can only manage the API key Secret; it does not use the shared workload ServiceAccount.
+- The default Job image installs `curl`, `jq`, `openssl` and `kubectl` from Alpine at runtime; pin or replace this image in restricted production environments.
 
 ## HTTP Ingress and STUN
 

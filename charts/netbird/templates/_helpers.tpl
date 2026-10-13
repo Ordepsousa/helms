@@ -139,13 +139,52 @@ Required public domain.
     {{- end -}}
 {{- end -}}
 
-{{/* server config auth.owner.password */}}
-{{- define "netbird.authOwnerPassword" -}}
-    {{- if .Values.config.auth.owner.existingSecret -}}
-        {{- print "${AUTH_OWNER_PASSWORD}" -}}
-    {{- else -}}
-        {{- .Values.config.auth.owner.password -}}
-    {{- end -}}
+{{/*
+Whether an initial owner/admin user is configured for the embedded IdP.
+*/}}
+{{- define "netbird.authOwnerConfigured" -}}
+{{- if or (and .Values.config.auth.owner.email .Values.config.auth.owner.password) .Values.config.auth.owner.existingSecret -}}true{{- else -}}false{{- end -}}
+{{- end -}}
+
+{{/*
+Owner password source for the bcrypt hashing init container. Renders either an
+env valueFrom secretKeyRef or a plain environment value.
+*/}}
+{{- define "netbird.authOwnerPasswordEnv" -}}
+{{- if .Values.config.auth.owner.existingSecret }}
+-   name: AUTH_OWNER_PASSWORD
+    valueFrom:
+        secretKeyRef:
+            name: {{ .Values.config.auth.owner.existingSecret }}
+            key: {{ .Values.config.auth.owner.existingSecretPasswordKey }}
+{{- else }}
+-   name: AUTH_OWNER_PASSWORD
+    value: {{ .Values.config.auth.owner.password | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Owner credentials for the bootstrap Job. Renders NB_EMAIL and NB_PASSWORD from
+config.auth.owner, either from existingSecret or from inline values.
+*/}}
+{{- define "netbird.authOwnerJobEnv" -}}
+{{- if .Values.config.auth.owner.existingSecret }}
+-   name: NB_EMAIL
+    valueFrom:
+        secretKeyRef:
+            name: {{ .Values.config.auth.owner.existingSecret }}
+            key: {{ .Values.config.auth.owner.existingSecretEmailKey }}
+-   name: NB_PASSWORD
+    valueFrom:
+        secretKeyRef:
+            name: {{ .Values.config.auth.owner.existingSecret }}
+            key: {{ .Values.config.auth.owner.existingSecretPasswordKey }}
+{{- else }}
+-   name: NB_EMAIL
+    value: {{ .Values.config.auth.owner.email | quote }}
+-   name: NB_PASSWORD
+    value: {{ .Values.config.auth.owner.password | quote }}
+{{- end }}
 {{- end -}}
 
 {{/* server config store.encryptionKey */}}
@@ -322,10 +361,6 @@ NETBIRD_STORE_ENGINE_{{- if eq .Values.server.database.external.engine "mysql" -
 -   name: {{ include "netbird.storeDsnEnvName" . }}
     value: {{ include "netbird.storeDsnTemplate" . | quote }}
 {{- end -}}
-{{- if .Values.bootstrap.enabled }}
--   name: NB_SETUP_PAT_ENABLED
-    value: "true"
-{{- end -}}
 {{- end -}}
 
 {{/*
@@ -372,12 +407,4 @@ Create the name of the service account to use
 
 {{- define "netbird.bootstrapApiKeySecretName" -}}
 {{- default (printf "%s-mgmt-api-key" (include "netbird.fullname" .)) .Values.bootstrap.apiKeySecretName -}}
-{{- end -}}
-
-{{- define "netbird.bootstrapCredentialsSecretName" -}}
-{{- if .Values.bootstrap.existingCredentialsSecret -}}
-{{- .Values.bootstrap.existingCredentialsSecret -}}
-{{- else -}}
-{{- printf "%s-bootstrap-credentials" (include "netbird.fullname" .) -}}
-{{- end -}}
 {{- end -}}

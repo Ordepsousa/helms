@@ -764,11 +764,8 @@
             "type": "object",
             "required": [
                 "enabled",
-                "createUser",
-                "generateAPIKey",
                 "apiKeySecretName",
-                "existingCredentialsSecret",
-                "credentials",
+                "tokenExpireIn",
                 "image",
                 "serviceAccount",
                 "jobAnnotations",
@@ -779,52 +776,12 @@
                 "enabled": {
                     "type": "boolean"
                 },
-                "createUser": {
-                    "type": "boolean"
-                },
-                "generateAPIKey": {
-                    "type": "boolean"
-                },
                 "apiKeySecretName": {
                     "type": "string"
                 },
-                "existingCredentialsSecret": {
-                    "type": "string"
-                },
-                "credentials": {
-                    "type": "object",
-                    "required": [
-                        "email",
-                        "name",
-                        "password",
-                        "emailKey",
-                        "nameKey",
-                        "passwordKey"
-                    ],
-                    "properties": {
-                        "email": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "password": {
-                            "type": "string"
-                        },
-                        "emailKey": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "nameKey": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "passwordKey": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    },
-                    "additionalProperties": false
+                "tokenExpireIn": {
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "image": {
                     "type": "object",
